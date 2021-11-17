@@ -1,6 +1,6 @@
 /// The instance actually performing all the CSV decoding work.
 ///
-/// A shadow decoder represents a moment in time on the decoding process. Therefore it is a immutable structure.
+/// A shadow decoder represents a moment in time on the decoding process. Therefore it is an immutable structure.
 struct ShadowDecoder: Decoder {
   /// The source of the CSV data.
   let source: Unmanaged<Source>

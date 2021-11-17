@@ -25,7 +25,7 @@ extension ShadowDecoder {
       self._buffer = Buffer(strategy: configuration.bufferingStrategy)
       self.configuration = configuration
       self.userInfo = userInfo
-      self.headers = reader.headers
+      self.headers = reader.headers.map(configuration.keyDecodingStrategy.convert(_:))
       self._headerLookup = Dictionary()
 
       switch configuration.bufferingStrategy {

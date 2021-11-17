@@ -9,6 +9,8 @@ extension ShadowDecoder {
     private let _decoder: ShadowDecoder
     /// The container's target (or level).
     private let _focus: _Focus
+    
+    private let _headers: [String]
 
     /// Fast initializer that doesn't perform any checks on the coding path (assuming it is valid).
     /// - parameter decoder: The `Decoder` instance in charge of decoding the CSV data.
@@ -16,6 +18,10 @@ extension ShadowDecoder {
     init(unsafeDecoder decoder: ShadowDecoder, rowIndex: Int) {
       self._decoder = decoder
       self._focus = .row(rowIndex)
+      
+      _headers = decoder.source._withUnsafeGuaranteedRef {
+        return $0.headers.map($0.configuration.keyDecodingStrategy.convert(_:))
+      }
     }
 
     /// Creates a keyed container only if the passed decoder's coding path is valid.
@@ -36,6 +42,10 @@ extension ShadowDecoder {
         throw CSVDecoder.Error._invalidContainerRequest(forKey: decoder.codingPath.last!, codingPath: decoder.codingPath)
       }
       self._decoder = decoder
+      
+      _headers = decoder.source._withUnsafeGuaranteedRef {
+        return $0.headers.map($0.configuration.keyDecodingStrategy.convert(_:))
+      }
     }
 
     var codingPath: [CodingKey] {
@@ -55,7 +65,7 @@ extension ShadowDecoder {
           let numberKeys = (0..<numFields).compactMap { Key(intValue: $0) }
           guard numberKeys.isEmpty else { return numberKeys }
 
-          return $0.headers.compactMap { Key(stringValue: $0) }
+          return _headers.compactMap { Key(stringValue: $0) }
         }
       }
     }
@@ -70,7 +80,7 @@ extension ShadowDecoder {
           if let index = key.intValue {
             return index >= 0 && index < $0.numExpectedFields
           } else {
-            return $0.headers.contains(key.stringValue)
+            return _headers.contains(key.stringValue)
           }
         }
       }
