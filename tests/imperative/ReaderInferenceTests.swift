@@ -33,7 +33,7 @@ extension ReaderInferenceTests {
     let fieldDelimiters: [Delimiter.Field] = [",", ";", "|", "\t"]
 
     var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: nil, row: "\n")
+    configuration.delimiters = (field: "", row: "\n")
 
     for fieldDelimiter in fieldDelimiters {
       let testString = _TestData.toCSV(_TestData.content, delimiters: (fieldDelimiter, "\n"))
@@ -53,5 +53,33 @@ extension ReaderInferenceTests {
       let result = try CSVReader.decode(input: testString, configuration: configuration)
       XCTAssertEqual(result.rows, _TestData.longContent)
     }
+  }
+
+  func testTryOutNewAPI() throws {
+    var configuration = CSVReader.Configuration()
+    // current usage
+    configuration.delimiters = (field: "", row: "\n")
+    configuration.delimiters = (field: nil, row: nil)
+    configuration.delimiters = (field: "hello", row: .standard)
+
+    var writerConfiguration = CSVWriter.Configuration()
+    writerConfiguration.delimiters = (field: .infer, row: "\n")
+
+    // options, choices, possibleValues
+
+    // | -> U+007C, Math Symbol (Sm)
+    // , -> U+002C, Other Punctuation (Po)
+    // ; -> U+003B, Other Punctuation (Po)
+    // : -> U+003A, Other Punctuation (Po)
+    // \t -> U+0009, Control (Cc)
+    // " " -> U+0020, Space Separator (Zs)
+
+    configuration.delimiters = (field: .infer(options: [",", ";"]), row: "\n")
+    configuration.delimiters = (field: .infer(options: ["--", ";"]), row: "\n")
+    configuration.delimiters = (field: .infer, row: "\n")
+    configuration.delimiters = (field: .infer, row: "\n")
+
+//    configuration.delimiters = (field: .infer, row: .infer)
+//    configuration.delimiters = .infer
   }
 }

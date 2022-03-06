@@ -42,7 +42,12 @@ extension CSVWriter {
     /// - throws: `CSVError<CSVWriter>` exclusively.
     init(configuration: CSVWriter.Configuration, encoding: String.Encoding) throws {
       // 1. The field and row delimiters must be defined and they cannot be the same.
-      guard let delimiters = Delimiter.Scalars(field: configuration.delimiters.field.scalars, row: configuration.delimiters.row.scalars) else {
+      // TODO: Change so that `nil` or `.infer` can't be specified as config values for the writer.
+      guard case .use(let scalars) = configuration.delimiters.field.delimiter else {
+        throw Error._invalidDelimiters()
+      }
+
+      guard let delimiters = Delimiter.Scalars(field: scalars, row: configuration.delimiters.row.scalars) else {
         throw Error._invalidDelimiters()
       }
       self.delimiters = (delimiters.field, delimiters.row.min {

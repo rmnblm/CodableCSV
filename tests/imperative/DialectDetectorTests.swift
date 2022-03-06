@@ -30,8 +30,10 @@ extension DialectDetectorTests {
 //      ),
     ]
 
+    let detector = DialectDetector(fieldDelimiters: [",", ";", "\t"])
+
     for (csv, expectedDialect) in dialects {
-      let dialect = DialectDetector.detectDialect(stringScalars: Array(csv.unicodeScalars))
+      let dialect = detector.detectDialect(stringScalars: Array(csv.unicodeScalars))
       XCTAssertEqual(dialect, expectedDialect, csv)
     }
   }

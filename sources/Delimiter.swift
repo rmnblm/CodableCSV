@@ -12,36 +12,73 @@ extension Delimiter {
     /// The accepted field delimiter. Usually a comma `,`.
     ///
     /// If it's empty, the field delimiter is unknown.
-    let scalars: [Unicode.Scalar]
+    let delimiter: Self._Delimiter
+
+    init(delimiter: Self._Delimiter) {
+      self.delimiter = delimiter
+    }
 
     public init(nilLiteral: ()) {
-      self.scalars = Array()
+      // TODO: Refactor, currently repeating the default list from `.infer`
+      self.delimiter = .infer(options: [[","], [";"], ["\t"]])
     }
 
     public init(unicodeScalarLiteral value: Unicode.Scalar) {
-      self.scalars = [value]
+      self.delimiter = .use([value])
     }
 
     public init(stringLiteral value: String) {
       precondition(!value.isEmpty)
-      self.scalars = Array(value.unicodeScalars)
+      self.delimiter = .use(Array(value.unicodeScalars))
     }
 
     /// The field delimiter is represented by the given `String`-like type.
     /// - parameter delimiter: The exact composition of the field delimiter. If empty, the initializer fails returning `nil`.
     public init?<S:StringProtocol>(_ delimiter: S) {
       guard !delimiter.isEmpty else { return nil }
-      self.scalars = Array(delimiter.unicodeScalars)
-    }
-
-    /// Boolean indicating if the exact unicode scalar composition for the field delimiter is known or unknown.
-    var isKnown: Bool {
-      !self.scalars.isEmpty
+      self.delimiter = .use(Array(delimiter.unicodeScalars))
     }
 
     /// Returns the `String` representation of the field delimiter.
     public var description: String {
       String(String.UnicodeScalarView(self.scalars))
+    }
+
+    var scalars: [Unicode.Scalar] {
+      switch self.delimiter {
+      case .infer:
+        return []
+      case let .use(scalars):
+        return scalars
+      }
+    }
+
+    /// Automatically infer the field delimiter out of a list of the most common delimiters: comma (","), semicolon (";") and tab ("\t").
+    public static var infer: Self {
+      Self.infer(options: [",", ";", "\t"])
+    }
+
+    public static func infer(options: [Unicode.Scalar]) -> Self {
+      // TODO: Figure out what to do when `options` is empty
+      // TODO: Figure out what to do when `options` contains the same delimiter multiple times
+      precondition(!options.isEmpty)
+      return Self(delimiter: .infer(options: options.map { [$0] }))
+    }
+
+    /// Automatically infer the field delimiter out of a list of provided delimiters.
+    /// - parameter options: The possible delimiters
+    /// - returns: An instance of `Self` initialized for inference
+    public static func infer(options: [String]) -> Self {
+      Self(delimiter: .infer(options: options.map { Array($0.unicodeScalars) }))
+    }
+
+    public static func infer<S:StringProtocol>(options: [S]) -> Self {
+      Self(delimiter: .infer(options: options.map { Array($0.unicodeScalars) }))
+    }
+
+    enum _Delimiter {
+      case use([Unicode.Scalar])
+      case infer(options: [[Unicode.Scalar]])
     }
   }
 }

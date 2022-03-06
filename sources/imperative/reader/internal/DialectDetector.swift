@@ -24,8 +24,12 @@
  */
 
 /// Provides the means for detecting a CSV file's dialect
-enum DialectDetector {
-  private static let fieldDelimiters: [Unicode.Scalar] = [",", ";", "\t", "|"]
+struct DialectDetector {
+  let fieldDelimiters: [Unicode.Scalar]
+
+  init(fieldDelimiters: [Unicode.Scalar]) {
+    self.fieldDelimiters = fieldDelimiters
+  }
 
   /// Detects the dialect used in the provided CSV file.
   ///
@@ -34,8 +38,8 @@ enum DialectDetector {
   ///
   /// - Parameter stringScalars: The raw CSV data.
   /// - Returns: The detected dialect.
-  static func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect {
-    let dialects = Self.fieldDelimiters.map { Dialect(fieldDelimiter: $0) }
+  func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect {
+    let dialects = self.fieldDelimiters.map { Dialect(fieldDelimiter: $0) }
 
     var maxConsistency = -Double.infinity
     var scores: [Dialect: Double] = [:]
