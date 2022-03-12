@@ -6,6 +6,21 @@ final class DialectDetectorTests: XCTestCase {}
 // MARK: - Tests for detectDialect
 
 extension DialectDetectorTests {
+  func test_makeDialects() {
+    let dialects = DialectDetector.makeDialects(fieldDelimiters: [[","], [";"]], rowDelimiters: [Set(arrayLiteral: ["\n"]), Set(arrayLiteral: ["\r"])])
+    XCTAssertEqual(
+      dialects,
+      [
+        .init(fieldDelimiter: [","], rowDelimiter: Set(arrayLiteral: ["\n"])),
+        .init(fieldDelimiter: [","], rowDelimiter: Set(arrayLiteral: ["\r"])),
+        .init(fieldDelimiter: [";"], rowDelimiter: Set(arrayLiteral: ["\n"])),
+        .init(fieldDelimiter: [";"], rowDelimiter: Set(arrayLiteral: ["\r"])),
+      ]
+    )
+  }
+}
+
+extension DialectDetectorTests {
   func test_detectDialect() throws {
     // Adapted from CPython
     // See: https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_csv.py#L1039
@@ -17,7 +32,7 @@ extension DialectDetectorTests {
         Tommy's Place, Blue Island, IL, 12/28/02, Blue Sunday/White Crow
         Stonecutters Seafood and Chop House, Lemont, IL, 12/19/02, Week Back
         """,
-        DialectDetector.Dialect(fieldDelimiter: ",")
+        DialectDetector.Dialect(fieldDelimiter: [","])
       ),
 //      (
 //        """
@@ -30,11 +45,11 @@ extension DialectDetectorTests {
 //      ),
     ]
 
-    let detector = DialectDetector(fieldDelimiters: [",", ";", "\t"])
+    let detector = DialectDetector(fieldDelimiters: [[","], [";"], ["\t"]], rowDelimiters: [.init(arrayLiteral: ["\n"])])
 
     for (csv, expectedDialect) in dialects {
       let dialect = detector.detectDialect(stringScalars: Array(csv.unicodeScalars))
-      XCTAssertEqual(dialect, expectedDialect, csv)
+      XCTAssertEqual(dialect, expectedDialect, csv.debugDescription)
     }
   }
 }
@@ -46,8 +61,8 @@ extension DialectDetectorTests {
   // See: https://github.com/alan-turing-institute/CleverCSV/blob/master/tests/test_unit/test_detect_pattern.py#L160-L195
   func test_calculatePatternScore() throws {
     let dialectScores: [(DialectDetector.Dialect, Double)] = [
-      (.init(fieldDelimiter: ","), 7 / 4),
-      (.init(fieldDelimiter: ";"), 10 / 3),
+      (.init(fieldDelimiter: [","]), 7 / 4),
+      (.init(fieldDelimiter: [";"]), 10 / 3),
     ]
     let csv = #"""
       7,5; Mon, Jan 12;6,40
@@ -59,7 +74,7 @@ extension DialectDetectorTests {
 
     for (dialect, expectedScore) in dialectScores {
       let score = DialectDetector.calculatePatternScore(stringScalars: Array(csv.unicodeScalars), dialect: dialect)
-      XCTAssertEqual(score, expectedScore, "Delimiter: \(dialect.fieldDelimiter)")
+      XCTAssertEqual(score, expectedScore, "Delimiter: \(dialect.delimiters.field)")
     }
   }
 
@@ -73,19 +88,18 @@ extension DialectDetectorTests {
       baz;,"boo"
       """
 
-    let dialectErrors: [(DialectDetector.Dialect, [DialectDetector.Abstraction.Error])] = [
-      (.init(fieldDelimiter: ","), []),
-      (.init(fieldDelimiter: ";"), [.invalidEscapeCharacterPosition]),
+    let dialects: [(DialectDetector.Dialect, Double)] = [
+      (.init(fieldDelimiter: [","]), 1.0),
+      (.init(fieldDelimiter: [";"]), 0.5),
     ]
 
-    for (dialect, expectedErrors) in dialectErrors {
-      let msg = "Delimiter: \(dialect.fieldDelimiter)"
+    for (dialect, expectedScore) in dialects {
+      let msg = "Delimiter: \(dialect.delimiters.field)"
       let scalars = Array(csv.unicodeScalars)
       let score = DialectDetector.calculatePatternScore(stringScalars: scalars, dialect: dialect)
-      XCTAssertEqual(score, 1.0, msg)
-      let (abstraction, errors) = DialectDetector.makeAbstraction(stringScalars: scalars, dialect: dialect)
-      XCTAssertEqual(abstraction, [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell])
-      XCTAssertEqual(errors, expectedErrors, msg)
+      XCTAssertEqual(score, expectedScore, msg)
+      let abstraction = DialectDetector.makeAbstraction(stringScalars: scalars, dialect: dialect)
+      XCTAssertEqual(abstraction, [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell], msg)
     }
   }
 }
@@ -101,17 +115,17 @@ extension DialectDetectorTests {
       (",", [.cell, .fieldDelimiter, .cell]),
       (",,", [.cell, .fieldDelimiter, .cell, .fieldDelimiter, .cell]),
 
-      ("\n", [.cell, .rowDelimiter]),
-      ("\n\n", [.cell, .rowDelimiter, .cell, .rowDelimiter]),
+//      ("\n", [.cell, .rowDelimiter]),
+//      ("\n\n", [.cell, .rowDelimiter, .cell, .rowDelimiter]),
 
       (",\n,", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
       (",foo\n,bar", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
+    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
 
     for (csv, expected) in abstractions {
-      let (abstraction, _) = DialectDetector.makeAbstraction(stringScalars: Array(csv.unicodeScalars), dialect: dialect)
-      XCTAssertEqual(abstraction, expected, csv)
+      let abstraction = DialectDetector.makeAbstraction(stringScalars: Array(csv.unicodeScalars), dialect: dialect)
+      XCTAssertEqual(abstraction, expected, csv.debugDescription)
     }
   }
 
@@ -121,16 +135,16 @@ extension DialectDetectorTests {
       (#"  "foo ""quoted"" \n ,bar",baz  "#, [.cell, .fieldDelimiter, .cell]),
       (#"  a,"bc""d""e""f""a",\n         "#, [.cell, .fieldDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
+    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
     for (csv, expected) in escapingAbstractions {
       let strippedCSV = csv.trimmingCharacters(in: .whitespaces)
-      let (abstraction, _) = DialectDetector.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
-      XCTAssertEqual(abstraction, expected, csv)
+      let abstraction = DialectDetector.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
+      XCTAssertEqual(abstraction, expected, csv.debugDescription)
     }
   }
 
   func test_makeAbstraction_HandlesInvalidEscaping() throws {
-    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
+    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
     let malformedCSVs: [(String, [DialectDetector.Abstraction])] = [
       // escaping
       (#"  foo,x"bar"  "#, [.cell, .fieldDelimiter, .cell]),
@@ -142,8 +156,8 @@ extension DialectDetectorTests {
 
     for (csv, expected) in malformedCSVs {
       let strippedCSV = csv.trimmingCharacters(in: .whitespaces)
-      let (abstraction, _) = DialectDetector.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
-      XCTAssertEqual(abstraction, expected, strippedCSV)
+      let abstraction = DialectDetector.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
+      XCTAssertEqual(abstraction, expected, strippedCSV.debugDescription)
     }
   }
 }

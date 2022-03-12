@@ -4,6 +4,43 @@ public enum Delimiter {
   public typealias Pair = (field: Self.Field, row: Self.Row)
 }
 
+struct FieldDelimiter: ExpressibleByStringLiteral, CustomStringConvertible {
+  let scalars: [Unicode.Scalar]
+
+  init(scalars: [Unicode.Scalar]) {
+    precondition(!scalars.isEmpty)
+    self.scalars = scalars
+  }
+
+  init(stringLiteral value: String) {
+    precondition(!value.isEmpty)
+    self.scalars = Array(value.unicodeScalars)
+  }
+
+  public var description: String {
+    String(String.UnicodeScalarView(self.scalars))
+  }
+}
+
+
+struct RowDelimiter: ExpressibleByStringLiteral, CustomStringConvertible {
+  let scalars: [Unicode.Scalar]
+
+  init(scalars: [Unicode.Scalar]) {
+    precondition(!scalars.isEmpty)
+    self.scalars = scalars
+  }
+
+  init(stringLiteral value: String) {
+    precondition(!value.isEmpty)
+    self.scalars = Array(value.unicodeScalars)
+  }
+
+  public var description: String {
+    String(String.UnicodeScalarView(self.scalars))
+  }
+}
+
 extension Delimiter {
   /// The delimiter between fields/values.
   ///

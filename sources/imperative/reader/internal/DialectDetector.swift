@@ -25,10 +25,30 @@
 
 /// Provides the means for detecting a CSV file's dialect
 struct DialectDetector {
-  let fieldDelimiters: [Unicode.Scalar]
+  let dialects: [Dialect]
 
-  init(fieldDelimiters: [Unicode.Scalar]) {
-    self.fieldDelimiters = fieldDelimiters
+  init(fieldDelimiters: [[Unicode.Scalar]], rowDelimiters: [Set<[Unicode.Scalar]>]) {
+    self.dialects = Self.makeDialects(fieldDelimiters: fieldDelimiters, rowDelimiters: rowDelimiters)
+  }
+
+  static func makeDialects(fieldDelimiters: [[Unicode.Scalar]], rowDelimiters: [Set<[Unicode.Scalar]>]) -> [Dialect] {
+    let indexPairs = fieldDelimiters.indices.flatMap { fieldIndex in
+      rowDelimiters.indices.map { rowIndex in
+        (fieldIndex: fieldIndex, rowIndex: rowIndex)
+      }
+    }
+
+    let sortedIndexPairs = indexPairs.sorted { lhs, rhs in
+      lhs.fieldIndex + lhs.rowIndex < rhs.fieldIndex + rhs.rowIndex
+    }
+
+    let delimiterCombinations = sortedIndexPairs.map {
+      (fieldDelimiters[$0.fieldIndex], rowDelimiters[$0.rowIndex])
+    }
+
+    return delimiterCombinations
+      .compactMap(Delimiter.Scalars.init(field:row:))
+      .map(Dialect.init(delimiters:))
   }
 
   /// Detects the dialect used in the provided CSV file.
@@ -39,13 +59,10 @@ struct DialectDetector {
   /// - Parameter stringScalars: The raw CSV data.
   /// - Returns: The detected dialect.
   func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect {
-    let dialects = self.fieldDelimiters.map { Dialect(fieldDelimiter: $0) }
-
     var maxConsistency = -Double.infinity
     var scores: [Dialect: Double] = [:]
 
-    // TODO: Sort dialects from most to least probable?
-    for dialect in dialects {
+    for dialect in self.dialects {
       let patternScore = Self.calculatePatternScore(stringScalars: stringScalars, dialect: dialect)
 
       if patternScore < maxConsistency {
@@ -61,7 +78,7 @@ struct DialectDetector {
 
     let best = scores.max { a, b in a.value < b.value }
 
-    return best?.key ?? Dialect(fieldDelimiter: ",")
+    return best?.key ?? Dialect(fieldDelimiter: [","])
   }
 
   private static let eps = 0.001
@@ -75,11 +92,12 @@ struct DialectDetector {
   /// - parameter dialect: A dialect for which to calculate the score.
   /// - returns: The calculated pattern score for the given dialect.
   static func calculatePatternScore(stringScalars: [UnicodeScalar], dialect: Dialect) -> Double {
-    let (abstractions, _) = Self.makeAbstraction(stringScalars: stringScalars, dialect: dialect)
+    guard let abstraction = Self.makeAbstraction(stringScalars: stringScalars, dialect: dialect)
+    else { return 0.0 }
 
 #warning("TODO: Break ties based on generated errors")
 
-    let rowPatternCounts: [ArraySlice<Abstraction>: Int] = abstractions
+    let rowPatternCounts: [ArraySlice<Abstraction>: Int] = abstraction
       .split(separator: .rowDelimiter)
       .occurenceCounts()
 
@@ -95,9 +113,31 @@ struct DialectDetector {
 
   /// Describes a CSV file's formatting.
   struct Dialect: Hashable {
-    let fieldDelimiter: Unicode.Scalar
-    let rowDelimiter: Unicode.Scalar = "\n"
-    let escapeCharacter: Unicode.Scalar = "\""
+    let delimiters: Delimiter.Scalars
+//    let fieldDelimiter: [Unicode.Scalar]
+//    let rowDelimiter: Unicode.Scalar = "\n"
+//    let escapeCharacter: Unicode.Scalar = "\""
+
+    init(delimiters: Delimiter.Scalars) {
+      self.delimiters = delimiters
+    }
+
+    init(fieldDelimiter: [Unicode.Scalar], rowDelimiter: Set<[Unicode.Scalar]> = .init(arrayLiteral: ["\n"])) {
+      self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)!
+    }
+  }
+}
+
+extension Delimiter.Scalars: Equatable {
+  static func == (lhs: Delimiter.Scalars, rhs: Delimiter.Scalars) -> Bool {
+    lhs.field == rhs.field && lhs.row == rhs.row
+  }
+}
+
+extension Delimiter.Scalars: Hashable {
+  func hash(into hasher: inout Hasher) {
+    self.field.hash(into: &hasher)
+    self.row.hash(into: &hasher)
   }
 }
 
@@ -128,6 +168,28 @@ extension DialectDetector {
     }
   }
 
+  static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> [Abstraction]? {
+    let rowDelim = String(String.UnicodeScalarView(dialect.delimiters.row.first!))
+
+    var configuration = CSVReader.Configuration()
+    configuration.delimiters = (field: .init(delimiter: .use(dialect.delimiters.field)), row: .init(stringLiteral: rowDelim))
+
+    let iter = stringScalars.makeIterator()
+    let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
+    let decoder = CSVReader.makeDecoder(from: iter)
+
+    guard let reader = try? CSVReader(configuration: configuration, buffer: buffer, decoder: decoder)
+    else { return nil }
+
+    var abstraction: [[Abstraction]] = []
+    while let row = try? reader.readRow() {
+      let rowAbstraction: [Abstraction] = row.flatMap { _ in [.cell, .fieldDelimiter] }.dropLast()
+      abstraction.append(rowAbstraction)
+    }
+
+    return Array(abstraction.joined(separator: [Abstraction.rowDelimiter]))
+  }
+
   /// Builds an abstraction of the CSV data by parsing it with the provided dialect.
   ///
   /// For example, consider the following CSV data:
@@ -155,99 +217,105 @@ extension DialectDetector {
   /// - throws: An `Abstraction.Error`.
   /// - returns: An array of cells and delimiters.
   /// - todo: Currently assuming that delimiters can only be made up of a single Unicode scalar.
-  static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> ([Abstraction], [Abstraction.Error]) {
-    var abstraction: [Abstraction] = []
-    var errors: [Abstraction.Error] = []
-    var escaped = false
-
-    var iter = stringScalars.makeIterator()
-    var queuedNextScalar: Unicode.Scalar? = nil
-    while true {
-      guard let scalar = queuedNextScalar ?? iter.next() else { break }
-      queuedNextScalar = nil
-
-      switch scalar {
-      case dialect.fieldDelimiter:
-        if escaped { continue }
-
-        switch abstraction.last {
-        // - two consecutive field delimiters OR
-        // - field delimiter after row delimiter, i.e. at start of line OR
-        // - field delimiter at the very beginning, i.e. at start of first line
-        // all imply an empty cell
-        case .fieldDelimiter, .rowDelimiter, nil:
-          abstraction.append(.cell)
-          fallthrough
-        case .cell:
-          abstraction.append(.fieldDelimiter)
-        }
-
-      case dialect.rowDelimiter:
-        if escaped { continue }
-
-        switch abstraction.last {
-        // - two consecutive row delimiters
-        // - row delimiter after field delimiter
-        // - row delimiter at the very beginning, i.e. at start of first line
-        // all imply an empty cell
-        case .rowDelimiter, .fieldDelimiter, nil:
-          abstraction.append(.cell)
-          fallthrough
-        case .cell:
-          abstraction.append(.rowDelimiter)
-        }
-
-      case dialect.escapeCharacter:
-        if !escaped {
-          if abstraction.last == .cell {
-            // encountered an escape character after the beginning of a field
-            errors.append(.invalidEscapeCharacterPosition)
-          }
-          escaped = true
-          continue
-        }
-
-        // we are in an escaped context, so the encountered escape character
-        // is either the end of the field or must be followed by another escape character
-        let nextScalar = iter.next()
-
-        switch nextScalar {
-        case dialect.escapeCharacter:
-          // the escape character was escaped
-          continue
-        case nil:
-          // end of file
-          escaped = false
-        case dialect.fieldDelimiter, dialect.rowDelimiter:
-          // end of field
-          escaped = false
-          queuedNextScalar = nextScalar
-        default:
-          // encountered a non-delimiter character after the field ended
-          errors.append(.invalidEscapeCharacterPosition)
-          escaped = false
-          queuedNextScalar = nextScalar
-        }
-
-      default:
-        switch abstraction.last {
-        case .cell:
-          continue
-        case .fieldDelimiter, .rowDelimiter, nil:
-          abstraction.append(.cell)
-        }
-      }
-    }
-
-    if abstraction.last == .fieldDelimiter {
-      abstraction.append(.cell)
-    }
-
-    if escaped {
-      // reached EOF without closing the last escaped field
-      errors.append(.unbalancedEscapeCharacters)
-    }
-
-    return (abstraction, errors)
-  }
+//  static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> ([Abstraction], [Abstraction.Error]) {
+//    var abstraction: [Abstraction] = []
+//    var errors: [Abstraction.Error] = []
+//    var escaped = false
+//
+//    var iter = stringScalars.makeIterator()
+//    var queuedNextScalar: Unicode.Scalar? = nil
+//
+//    let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
+//    let decoder = CSVReader.makeDecoder(from: iter)
+//
+//    let x = Delimiter.Scalars._makeMatcher(delimiter: dialect.fieldDelimiter, buffer: buffer, decoder: decoder)
+//
+//
+//    while let scalar = queuedNextScalar ?? iter.next() {
+//      queuedNextScalar = nil
+//
+//      switch scalar {
+//      case dialect.fieldDelimiter:
+//        if escaped { continue }
+//
+//        switch abstraction.last {
+//        // - two consecutive field delimiters OR
+//        // - field delimiter after row delimiter, i.e. at start of line OR
+//        // - field delimiter at the very beginning, i.e. at start of first line
+//        // all imply an empty cell
+//        case .fieldDelimiter, .rowDelimiter, nil:
+//          abstraction.append(.cell)
+//          fallthrough
+//        case .cell:
+//          abstraction.append(.fieldDelimiter)
+//        }
+//
+//      case dialect.rowDelimiter:
+//        if escaped { continue }
+//
+//        switch abstraction.last {
+//        // - two consecutive row delimiters
+//        // - row delimiter after field delimiter
+//        // - row delimiter at the very beginning, i.e. at start of first line
+//        // all imply an empty cell
+//        case .rowDelimiter, .fieldDelimiter, nil:
+//          abstraction.append(.cell)
+//          fallthrough
+//        case .cell:
+//          abstraction.append(.rowDelimiter)
+//        }
+//
+//      case dialect.escapeCharacter:
+//        if !escaped {
+//          if abstraction.last == .cell {
+//            // encountered an escape character after the beginning of a field
+//            errors.append(.invalidEscapeCharacterPosition)
+//          }
+//          escaped = true
+//          continue
+//        }
+//
+//        // we are in an escaped context, so the encountered escape character
+//        // is either the end of the field or must be followed by another escape character
+//        let nextScalar = iter.next()
+//
+//        switch nextScalar {
+//        case dialect.escapeCharacter:
+//          // the escape character was escaped
+//          continue
+//        case nil:
+//          // end of file
+//          escaped = false
+//        case dialect.fieldDelimiter, dialect.rowDelimiter:
+//          // end of field
+//          escaped = false
+//          queuedNextScalar = nextScalar
+//        default:
+//          // encountered a non-delimiter character after the field ended
+//          errors.append(.invalidEscapeCharacterPosition)
+//          escaped = false
+//          queuedNextScalar = nextScalar
+//        }
+//
+//      default:
+//        switch abstraction.last {
+//        case .cell:
+//          continue
+//        case .fieldDelimiter, .rowDelimiter, nil:
+//          abstraction.append(.cell)
+//        }
+//      }
+//    }
+//
+//    if abstraction.last == .fieldDelimiter {
+//      abstraction.append(.cell)
+//    }
+//
+//    if escaped {
+//      // reached EOF without closing the last escaped field
+//      errors.append(.unbalancedEscapeCharacters)
+//    }
+//
+//    return (abstraction, errors)
+//  }
 }

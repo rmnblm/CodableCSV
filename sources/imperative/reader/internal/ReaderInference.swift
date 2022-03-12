@@ -75,7 +75,7 @@ extension Delimiter.Scalars {
   }
 }
 
-private extension Delimiter.Scalars {
+extension Delimiter.Scalars {
   /// Creates a delimiter identifier closure.
   /// - parameter delimiter: The value to be checked for.
   /// - parameter buffer: A unicode character buffer containing further characters to parse.
@@ -149,17 +149,35 @@ extension CSVReader {
     let fieldDelimiterScalars: [Unicode.Scalar]
     let rowDelimiterScalars: Set<[Unicode.Scalar]>
 
+    let fieldOptions: [[Unicode.Scalar]]
+
+
     switch (field.delimiter, row.isKnown) {
     case (.use(let scalars), true):
+      fieldOptions = [scalars]
       fieldDelimiterScalars = scalars
       rowDelimiterScalars = row.scalars
 
     case (.infer(let options), true):
+      fieldOptions = options
       fieldDelimiterScalars = try Self.inferFieldDelimiter(decoder: decoder, buffer: buffer, options: options)
       rowDelimiterScalars = row.scalars
 
     default: throw Error._unsupportedInference()
     }
+
+    let sampleLength = 50
+    var tmp: [UnicodeScalar] = []
+    tmp.reserveCapacity(sampleLength)
+    while tmp.count < sampleLength {
+      guard let scalar = try buffer.next() ?? decoder() else { break }
+      tmp.append(scalar)
+    }
+
+    let detector = DialectDetector(fieldDelimiters: fieldOptions, rowDelimiters: [])
+    let detectedDialect = detector.detectDialect(stringScalars: tmp)
+
+    buffer.preppend(scalars: tmp)
 
     guard let delimiters = Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
       throw Error._invalidDelimiters(fieldScalars: fieldDelimiterScalars, rowScalars: rowDelimiterScalars)
@@ -181,15 +199,13 @@ extension CSVReader {
       tmp.append(scalar)
     }
 
-    // TODO: Handle field delimiters consisting of multiple scalars
-    precondition(options.count == 1)
-
-    let detector = DialectDetector(fieldDelimiters: options.first!)
+    let detector = DialectDetector(fieldDelimiters: options, rowDelimiters: [])
+    
 
     let detectedDialect = detector.detectDialect(stringScalars: tmp)
     buffer.preppend(scalars: tmp)
 
-    return [detectedDialect.fieldDelimiter]
+    return detectedDialect.delimiters.field
   }
 }
 
