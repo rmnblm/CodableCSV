@@ -56,14 +56,18 @@ extension ReaderInferenceTests {
   }
 
   func testTryOutNewAPI() throws {
-    var configuration = CSVReader.Configuration()
+    var c = CSVReader.Configuration()
     // current usage
-    configuration.delimiters = (field: "", row: "\n")
-    configuration.delimiters = (field: nil, row: nil)
-    configuration.delimiters = (field: "hello", row: .standard)
+    c.delimiters = (field: "", row: "\n")
+    c.delimiters = (field: nil, row: nil)
+    c.delimiters = (field: "hello", row: .standard)
 
+    // TODO: This should not be possible
     var writerConfiguration = CSVWriter.Configuration()
-    writerConfiguration.delimiters = (field: .infer, row: "\n")
+//    writerConfiguration.delimiters = (field: .infer, row: "\n")
+
+    // valid
+    writerConfiguration.delimiters = (field: ",", row: "\n")
 
     // options, choices, possibleValues
 
@@ -74,12 +78,39 @@ extension ReaderInferenceTests {
     // \t -> U+0009, Control (Cc)
     // " " -> U+0020, Space Separator (Zs)
 
-    configuration.delimiters = (field: .infer(options: [",", ";"]), row: "\n")
-    configuration.delimiters = (field: .infer(options: ["--", ";"]), row: "\n")
-    configuration.delimiters = (field: .infer, row: "\n")
-    configuration.delimiters = (field: .infer, row: "\n")
+    c.delimiters = (field: .infer(options: [",", ";"]), row: "\n")
+    c.delimiters = (field: .infer(options: ["--", ";"]), row: "\n")
+    c.delimiters = (field: .infer, row: "\n")
+    c.delimiters = (field: .infer, row: .init("\n", "\r\n")!)
+    c.delimiters = (field: .infer(options: ["Some long string"]), row: "\n")
 
-//    configuration.delimiters = (field: .infer, row: .infer)
-//    configuration.delimiters = .infer
+    // Invalid
+    c.delimiters = (field: "", row: "")
+    c.delimiters = (field: .infer(options: []), row: "\n")
+    c.delimiters = (field: .infer, row: .init("\n", "")!)
+    c.delimiters = (field: "--", row: "--")
+    c.delimiters = (field: .infer(options: [",", "--"]), row: "--")
+    c.delimiters = (field: .infer(options: [",", "--"]), row: .infer(options: ["\n", "--"]))
+
+    // Writer
+    // Configuration: (field: StaticField, row: StaticRow) where field != row
+    // Settings: (field: [Unicode.Scalar], row: [Unicode.Scalar]) where field != row
+
+    // Reader
+    // Configuration: (field: InferrableField, row: InferrableRow)
+    // Settings: (field: StaticField, row: Set<StaticRow>)
+
+
+    // Supports inference
+    // Delimiter.Pair: (Delimiter.Field, Delimiter.Row)
+    // - Delimiter.Field: literal + infer
+    // - Delimiter.Row: literal + infer
+
+    // Is static and guaranteed to be valid
+    // Delimiter.Scalars: (FieldDelimiter, RowDelimiterSet)
+    // - FieldDelimiter: [Unicode.Scalar]
+    // - RowDelimiter: [Unicode.Scalar]
+    // - RowDelimiterSet: Set<RowDelimiter> a.k.a. Set<[Unicode.Scalar]>
+
   }
 }

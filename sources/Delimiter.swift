@@ -2,19 +2,29 @@
 public enum Delimiter {
   /// The CSV pair of delimiters (field & row delimiters).
   public typealias Pair = (field: Self.Field, row: Self.Row)
+  
+  public typealias WriterPair = (field: [Unicode.Scalar], row: [Unicode.Scalar])
 }
 
-struct FieldDelimiter: ExpressibleByStringLiteral, CustomStringConvertible {
+public struct Delimiter_: Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
   let scalars: [Unicode.Scalar]
 
-  init(scalars: [Unicode.Scalar]) {
+  public init(scalars: [Unicode.Scalar]) {
     precondition(!scalars.isEmpty)
     self.scalars = scalars
   }
 
-  init(stringLiteral value: String) {
-    precondition(!value.isEmpty)
-    self.scalars = Array(value.unicodeScalars)
+  public init(stringLiteral value: String) {
+    self.init(scalars: Array(value.unicodeScalars))
+  }
+
+  public init(unicodeScalarLiteral value: Unicode.Scalar) {
+    self.scalars = [value]
+  }
+
+  public init?<S:StringProtocol>(_ delimiter: S) {
+    guard !delimiter.isEmpty else { return nil }
+    self.init(scalars: Array(delimiter.unicodeScalars))
   }
 
   public var description: String {
@@ -22,22 +32,141 @@ struct FieldDelimiter: ExpressibleByStringLiteral, CustomStringConvertible {
   }
 }
 
+extension Delimiter_: Sequence {
+  public func makeIterator() -> Array<Element>.Iterator {
+    self.scalars.makeIterator()
+  }
+}
 
-struct RowDelimiter: ExpressibleByStringLiteral, CustomStringConvertible {
+extension Delimiter_: Collection {
+  public typealias Element = Unicode.Scalar
+  public typealias Index = Array<Element>.Index
+
+  public subscript(position: Index) -> Element {
+    self.scalars[position]
+  }
+
+  public var startIndex: Index {
+    self.scalars.startIndex
+  }
+
+  public var endIndex: Index {
+    self.scalars.endIndex
+  }
+
+  public func index(after i: Index) -> Index {
+    self.scalars.index(after: i)
+  }
+}
+
+
+public struct FieldDelimiter: Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
   let scalars: [Unicode.Scalar]
 
-  init(scalars: [Unicode.Scalar]) {
+  public init(scalars: [Unicode.Scalar]) {
     precondition(!scalars.isEmpty)
     self.scalars = scalars
   }
 
-  init(stringLiteral value: String) {
-    precondition(!value.isEmpty)
-    self.scalars = Array(value.unicodeScalars)
+  public init(stringLiteral value: String) {
+    self.init(scalars: Array(value.unicodeScalars))
+  }
+
+  public init(unicodeScalarLiteral value: Unicode.Scalar) {
+    self.scalars = [value]
+  }
+
+  public init?<S:StringProtocol>(_ delimiter: S) {
+    guard !delimiter.isEmpty else { return nil }
+    self.init(scalars: Array(delimiter.unicodeScalars))
   }
 
   public var description: String {
     String(String.UnicodeScalarView(self.scalars))
+  }
+}
+
+extension FieldDelimiter: Sequence {
+  public typealias Iterator = Array<Element>.Iterator
+
+  public func makeIterator() -> Iterator {
+    self.scalars.makeIterator()
+  }
+}
+
+extension FieldDelimiter: Collection {
+  public typealias Element = Unicode.Scalar
+  public typealias Index = Array<Element>.Index
+
+  public subscript(position: Index) -> Element {
+    self.scalars[position]
+  }
+
+  public var startIndex: Index {
+    self.scalars.startIndex
+  }
+
+  public var endIndex: Index {
+    self.scalars.endIndex
+  }
+
+  public func index(after i: Index) -> Index {
+    self.scalars.index(after: i)
+  }
+}
+
+public struct RowDelimiter: Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
+  let scalars: [Unicode.Scalar]
+
+  public init(scalars: [Unicode.Scalar]) {
+    precondition(!scalars.isEmpty)
+    self.scalars = scalars
+  }
+
+  public init(stringLiteral value: String) {
+    self.init(scalars: Array(value.unicodeScalars))
+  }
+
+  public init(unicodeScalarLiteral value: Unicode.Scalar) {
+    self.scalars = [value]
+  }
+
+  public init?<S:StringProtocol>(_ delimiter: S) {
+    guard !delimiter.isEmpty else { return nil }
+    self.init(scalars: Array(delimiter.unicodeScalars))
+  }
+
+  public var description: String {
+    String(String.UnicodeScalarView(self.scalars))
+  }
+}
+
+extension RowDelimiter: Sequence {
+  public typealias Iterator = Array<Element>.Iterator
+
+  public func makeIterator() -> Iterator {
+    self.scalars.makeIterator()
+  }
+}
+
+extension RowDelimiter: Collection {
+  public typealias Element = Unicode.Scalar
+  public typealias Index = Array<Element>.Index
+
+  public subscript(position: Index) -> Unicode.Scalar {
+    self.scalars[position]
+  }
+
+  public var startIndex: Index {
+    self.scalars.startIndex
+  }
+
+  public var endIndex: Index {
+    self.scalars.endIndex
+  }
+
+  public func index(after i: Index) -> Index {
+    self.scalars.index(after: i)
   }
 }
 
@@ -47,8 +176,6 @@ extension Delimiter {
   /// If the delimiter is initialized with `nil`, it implies the field delimiter is unknown and the system should try to figure it out.
   public struct Field: ExpressibleByNilLiteral, ExpressibleByStringLiteral, CustomStringConvertible {
     /// The accepted field delimiter. Usually a comma `,`.
-    ///
-    /// If it's empty, the field delimiter is unknown.
     let delimiter: Self._Delimiter
 
     init(delimiter: Self._Delimiter) {
@@ -56,66 +183,58 @@ extension Delimiter {
     }
 
     public init(nilLiteral: ()) {
-      // TODO: Refactor, currently repeating the default list from `.infer`
-      self.delimiter = .infer(options: [[","], [";"], ["\t"]])
+      self.delimiter = .infer(options: [",", ";", "\t"])
     }
 
     public init(unicodeScalarLiteral value: Unicode.Scalar) {
-      self.delimiter = .use([value])
+      self.delimiter = .use(.init(unicodeScalarLiteral: value))
     }
 
     public init(stringLiteral value: String) {
-      precondition(!value.isEmpty)
-      self.delimiter = .use(Array(value.unicodeScalars))
+      self.delimiter = .use(.init(stringLiteral: value))
     }
 
     /// The field delimiter is represented by the given `String`-like type.
     /// - parameter delimiter: The exact composition of the field delimiter. If empty, the initializer fails returning `nil`.
     public init?<S:StringProtocol>(_ delimiter: S) {
-      guard !delimiter.isEmpty else { return nil }
-      self.delimiter = .use(Array(delimiter.unicodeScalars))
+      guard let fieldDelimiter = FieldDelimiter.init(delimiter)
+      else { return nil }
+
+      self.delimiter = .use(fieldDelimiter)
     }
 
     /// Returns the `String` representation of the field delimiter.
     public var description: String {
-      String(String.UnicodeScalarView(self.scalars))
+      ""
+//      String(String.UnicodeScalarView(self.scalars))
     }
 
     var scalars: [Unicode.Scalar] {
       switch self.delimiter {
       case .infer:
         return []
-      case let .use(scalars):
-        return scalars
+      case let .use(fieldDelimiter):
+        return fieldDelimiter.scalars
       }
     }
 
     /// Automatically infer the field delimiter out of a list of the most common delimiters: comma (","), semicolon (";") and tab ("\t").
     public static var infer: Self {
-      Self.infer(options: [",", ";", "\t"])
-    }
-
-    public static func infer(options: [Unicode.Scalar]) -> Self {
-      // TODO: Figure out what to do when `options` is empty
-      // TODO: Figure out what to do when `options` contains the same delimiter multiple times
-      precondition(!options.isEmpty)
-      return Self(delimiter: .infer(options: options.map { [$0] }))
+      self.init(nilLiteral: ())
     }
 
     /// Automatically infer the field delimiter out of a list of provided delimiters.
     /// - parameter options: The possible delimiters
     /// - returns: An instance of `Self` initialized for inference
-    public static func infer(options: [String]) -> Self {
-      Self(delimiter: .infer(options: options.map { Array($0.unicodeScalars) }))
-    }
-
-    public static func infer<S:StringProtocol>(options: [S]) -> Self {
-      Self(delimiter: .infer(options: options.map { Array($0.unicodeScalars) }))
+    public static func infer(options: [FieldDelimiter]) -> Self {
+      precondition(!options.isEmpty)
+      // TODO: Figure out what to do when `options` contains the same delimiter multiple times
+      return self.init(delimiter: .infer(options: options))
     }
 
     enum _Delimiter {
-      case use([Unicode.Scalar])
-      case infer(options: [[Unicode.Scalar]])
+      case use(FieldDelimiter)
+      case infer(options: [FieldDelimiter])
     }
   }
 }
@@ -127,35 +246,37 @@ extension Delimiter {
   public struct Row: ExpressibleByStringLiteral, ExpressibleByNilLiteral, CustomStringConvertible {
     /// All the accepted row delimiters. Usually, it is only one.
     /// - invariant: The elements of the set (i.e. the arrays) always contain at least one element.
-    let scalars: Set<[Unicode.Scalar]>
+    let delimiter: Self._Delimiter
+
+    init(delimiter: Self._Delimiter) {
+      self.delimiter = delimiter
+    }
 
     public init(nilLiteral: ()) {
-      self.scalars = Set()
+      self.delimiter = .infer(options: ["\n", "\r\n"])
     }
 
     public init(unicodeScalarLiteral value: Unicode.Scalar) {
-      var delimiters = Set<[Unicode.Scalar]>(minimumCapacity: 1)
-      delimiters.insert([value])
-      self.scalars = delimiters
+      var delimiters = Set<RowDelimiter>(minimumCapacity: 1)
+      delimiters.insert(.init(unicodeScalarLiteral: value))
+      self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
     }
 
     public init(stringLiteral value: String) {
-      precondition(!value.isEmpty)
-
-      var delimiters = Set<[Unicode.Scalar]>(minimumCapacity: 1)
-      delimiters.insert(Array(value.unicodeScalars))
-      self.scalars = delimiters
+      var delimiters = Set<RowDelimiter>(minimumCapacity: 1)
+      delimiters.insert(.init(stringLiteral: value))
+      self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
     }
 
     /// Creates one or more possible row delimiters.
     /// - parameter delimiters:The exact composition of the row delimiters. If any of the `delimiters` is empty, the initializer fails returning `nil`.
     public init?<S:StringProtocol>(_ delimiters: S...) {
-      let scalars: [[Unicode.Scalar]] = delimiters.compactMap {
+      let scalars: [RowDelimiter] = delimiters.compactMap {
         guard !$0.isEmpty else { return nil }
-        return Array($0.unicodeScalars)
+        return RowDelimiter(scalars: Array($0.unicodeScalars))
       }
       guard !scalars.isEmpty else { return nil }
-      self.scalars = Set(scalars)
+      self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
     }
 
     /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and s single line feed `\n`.
@@ -165,43 +286,84 @@ extension Delimiter {
       self.init("\n", "\r\n")!
     }
 
-    /// Boolean indicating if the exact unicode scalar composition for the row delimiter is known or unknown.
-    var isKnown: Bool {
-      !self.scalars.isEmpty
+    public static var infer: Self {
+      self.init(nilLiteral: ())
+    }
+
+    /// Automatically infer the field delimiter out of a list of provided delimiters.
+    /// - parameter options: The possible delimiters, must not be empty
+    /// - returns: An instance of `Self` initialized for inference
+    public static func infer(options: [RowDelimiter]) -> Self {
+      precondition(!options.isEmpty)
+      // TODO: Figure out what to do when `options` contains the same delimiter multiple times
+      return self.init(delimiter: .infer(options: options))
+    }
+
+    var scalars: Set<[Unicode.Scalar]> {
+      switch self.delimiter {
+      case .infer:
+        return []
+      case let .use(rowDelimiter):
+        return Set(rowDelimiter.rowDelimiterSet.map(\.scalars))
+      }
     }
 
     /// Returns the `String` representation of the row delimiter.
     ///
     /// If more than one row has been provided, the `String` with less number of characters and less value (i.e. less Integer value) is selected.
     public var description: String {
-      String(String.UnicodeScalarView(self.scalars.min {
-        guard $0.count == $1.count else { return $0.count < $1.count }
-        for (lhs, rhs) in zip($0, $1) where lhs != rhs { return lhs < rhs }
-        return true
-      }!))
+      ""
+//      String(String.UnicodeScalarView(self.scalars.min {
+//        guard $0.count == $1.count else { return $0.count < $1.count }
+//        for (lhs, rhs) in zip($0, $1) where lhs != rhs { return lhs < rhs }
+//        return true
+//      }!))
+    }
+
+    enum _Delimiter {
+      case use(RowDelimiterSet)
+      case infer(options: [RowDelimiter])
     }
   }
 }
 
 extension Delimiter {
   /// Contains the exact composition of a CSV field and row delimiter.
-  struct Scalars {
+  public struct Scalars {
     /// The exact composition of unicode scalars indetifying a field delimiter.
     /// - invariant: The array always contains at least one element.
-    let field: [Unicode.Scalar]
+    let field: FieldDelimiter
     /// All possile row delimiters specifying its exact compositon of unicode scalars.
     /// - invariant: The set always contains at least one element and all set elements always contain at least on scalar.
-    let row: Set<[Unicode.Scalar]>
+    let row: RowDelimiterSet
 
     /// Designated initializer checking that the delimiters aren't empty and the field delimiter is not included in the row delimiter.
     /// - parameter field: The exact composition of the field delimiter. If empty, `nil` is returned.
     /// - parameter row: The exact composition of all possible row delimiters. If it is empty or any of its elements is an empty array, `nil` is returned.
-    init?(field: [Unicode.Scalar], row: Set<[Unicode.Scalar]>) {
-      guard !field.isEmpty else { return nil }
+    public init(field: FieldDelimiter, row: RowDelimiterSet) {
       self.field = field
-      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
+//      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
       self.row = row
-      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
+//      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
     }
   }
 }
+
+public struct RowDelimiterSet: ExpressibleByArrayLiteral, ExpressibleByStringLiteral {
+  let rowDelimiterSet: Set<RowDelimiter>
+
+  public init(rowDelimiterSet: Set<RowDelimiter>) {
+    precondition(!rowDelimiterSet.isEmpty)
+    self.rowDelimiterSet = rowDelimiterSet
+  }
+
+  public init(arrayLiteral elements: RowDelimiter...) {
+    self.init(rowDelimiterSet: Set(elements))
+  }
+
+  public init(stringLiteral value: String) {
+    self.init(rowDelimiterSet: Set([RowDelimiter(stringLiteral: value)]))
+  }
+}
+
+extension RowDelimiterSet: Hashable {}

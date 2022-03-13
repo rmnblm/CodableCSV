@@ -9,7 +9,7 @@ extension Delimiter.Scalars {
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - returns: A closure which given the targeted unicode character and the buffer and iterrator, returns a Boolean indicating whether there is a field delimiter.
   func makeFieldMatcher(buffer: CSVReader.ScalarBuffer, decoder: @escaping CSVReader.ScalarDecoder) -> Self.Checker {
-    Self._makeMatcher(delimiter: self.field, buffer: buffer, decoder: decoder)
+    Self._makeMatcher(delimiter: self.field.scalars, buffer: buffer, decoder: decoder)
   }
 
   /// Creates a row delimiter identifir closure.
@@ -17,11 +17,11 @@ extension Delimiter.Scalars {
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - returns: A closure which given the targeted unicode character and the buffer and iterrator, returns a Boolean indicating whether there is a row delimiter.
   func makeRowMatcher(buffer: CSVReader.ScalarBuffer, decoder: @escaping CSVReader.ScalarDecoder) -> Self.Checker {
-    guard self.row.count > 1 else {
-      return Self._makeMatcher(delimiter: self.row.first!, buffer: buffer, decoder: decoder)
+    guard self.row.rowDelimiterSet.count > 1 else {
+      return Self._makeMatcher(delimiter: self.row.rowDelimiterSet.first!.scalars, buffer: buffer, decoder: decoder)
     }
 
-    let delimiters = self.row.sorted { $0.count < $1.count }
+    let delimiters = self.row.rowDelimiterSet.sorted { $0.count < $1.count }
     let maxScalars = delimiters.last!.count
 
     // For optimization sake, a delimiter proofer is built for a single value scalar.
@@ -146,22 +146,17 @@ extension CSVReader {
   /// - throws: `CSVError<CSVReader>` exclusively.
   /// - todo: Implement the field and row inferences.
   static func inferDelimiters(field: Delimiter.Field, row: Delimiter.Row, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Delimiter.Scalars {
-    let fieldDelimiterScalars: [Unicode.Scalar]
-    let rowDelimiterScalars: Set<[Unicode.Scalar]>
+    let fieldDelimiterOptions: [FieldDelimiter]
+    let rowDelimiterOptions: [RowDelimiterSet]
 
-    let fieldOptions: [[Unicode.Scalar]]
+    switch (field.delimiter, row.delimiter) {
+    case (.use(let fieldDelimiter), .use(let rowDelimiter)):
+      fieldDelimiterOptions = [fieldDelimiter]
+      rowDelimiterOptions = [rowDelimiter]
 
-
-    switch (field.delimiter, row.isKnown) {
-    case (.use(let scalars), true):
-      fieldOptions = [scalars]
-      fieldDelimiterScalars = scalars
-      rowDelimiterScalars = row.scalars
-
-    case (.infer(let options), true):
-      fieldOptions = options
-      fieldDelimiterScalars = try Self.inferFieldDelimiter(decoder: decoder, buffer: buffer, options: options)
-      rowDelimiterScalars = row.scalars
+    case (.infer(let options), .use(let rowDelimiter)):
+      fieldDelimiterOptions = options
+      rowDelimiterOptions = [rowDelimiter]
 
     default: throw Error._unsupportedInference()
     }
@@ -174,38 +169,18 @@ extension CSVReader {
       tmp.append(scalar)
     }
 
-    let detector = DialectDetector(fieldDelimiters: fieldOptions, rowDelimiters: [])
+    let detector = DialectDetector(fieldDelimiters: fieldDelimiterOptions, rowDelimiters: rowDelimiterOptions)
     let detectedDialect = detector.detectDialect(stringScalars: tmp)
+
 
     buffer.preppend(scalars: tmp)
 
-    guard let delimiters = Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
-      throw Error._invalidDelimiters(fieldScalars: fieldDelimiterScalars, rowScalars: rowDelimiterScalars)
-    }
+//    guard let delimiters = Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
+//      throw Error._invalidDelimiters(fieldScalars: fieldDelimiterScalars, rowScalars: rowDelimiterScalars)
+//    }
 
-    return delimiters
-  }
-
-  /// Tries to infer the field delimiter from the raw data.
-  /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
-  /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
-  /// - returns: The inferred `Delimiter.Field`.
-  static func inferFieldDelimiter(decoder: ScalarDecoder, buffer: ScalarBuffer, options: [[Unicode.Scalar]]) rethrows -> [Unicode.Scalar] {
-    let sampleLength = 50
-    var tmp: [UnicodeScalar] = []
-    tmp.reserveCapacity(sampleLength)
-    while tmp.count < sampleLength {
-      guard let scalar = try buffer.next() ?? decoder() else { break }
-      tmp.append(scalar)
-    }
-
-    let detector = DialectDetector(fieldDelimiters: options, rowDelimiters: [])
-    
-
-    let detectedDialect = detector.detectDialect(stringScalars: tmp)
-    buffer.preppend(scalars: tmp)
-
-    return detectedDialect.delimiters.field
+    return detectedDialect.delimiters
+//    return (field: detectedDialect.delimiters.field, row: detectedDialect.delimiters.row)
   }
 }
 

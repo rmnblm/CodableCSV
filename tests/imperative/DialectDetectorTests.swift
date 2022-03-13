@@ -7,14 +7,14 @@ final class DialectDetectorTests: XCTestCase {}
 
 extension DialectDetectorTests {
   func test_makeDialects() {
-    let dialects = DialectDetector.makeDialects(fieldDelimiters: [[","], [";"]], rowDelimiters: [Set(arrayLiteral: ["\n"]), Set(arrayLiteral: ["\r"])])
+    let dialects = DialectDetector.makeDialects(fieldDelimiters: [",", ";"], rowDelimiters: ["\n", "\r"])
     XCTAssertEqual(
       dialects,
       [
-        .init(fieldDelimiter: [","], rowDelimiter: Set(arrayLiteral: ["\n"])),
-        .init(fieldDelimiter: [","], rowDelimiter: Set(arrayLiteral: ["\r"])),
-        .init(fieldDelimiter: [";"], rowDelimiter: Set(arrayLiteral: ["\n"])),
-        .init(fieldDelimiter: [";"], rowDelimiter: Set(arrayLiteral: ["\r"])),
+        .init(fieldDelimiter: ",", rowDelimiter: ["\n"]),
+        .init(fieldDelimiter: ",", rowDelimiter: ["\r"]),
+        .init(fieldDelimiter: ";", rowDelimiter: ["\n"]),
+        .init(fieldDelimiter: ";", rowDelimiter: ["\r"]),
       ]
     )
   }
@@ -32,7 +32,7 @@ extension DialectDetectorTests {
         Tommy's Place, Blue Island, IL, 12/28/02, Blue Sunday/White Crow
         Stonecutters Seafood and Chop House, Lemont, IL, 12/19/02, Week Back
         """,
-        DialectDetector.Dialect(fieldDelimiter: [","])
+        DialectDetector.Dialect(fieldDelimiter: ",")
       ),
 //      (
 //        """
@@ -45,7 +45,7 @@ extension DialectDetectorTests {
 //      ),
     ]
 
-    let detector = DialectDetector(fieldDelimiters: [[","], [";"], ["\t"]], rowDelimiters: [.init(arrayLiteral: ["\n"])])
+    let detector = DialectDetector(fieldDelimiters: [",", ";", "\t"], rowDelimiters: ["\n"])
 
     for (csv, expectedDialect) in dialects {
       let dialect = detector.detectDialect(stringScalars: Array(csv.unicodeScalars))
@@ -61,8 +61,8 @@ extension DialectDetectorTests {
   // See: https://github.com/alan-turing-institute/CleverCSV/blob/master/tests/test_unit/test_detect_pattern.py#L160-L195
   func test_calculatePatternScore() throws {
     let dialectScores: [(DialectDetector.Dialect, Double)] = [
-      (.init(fieldDelimiter: [","]), 7 / 4),
-      (.init(fieldDelimiter: [";"]), 10 / 3),
+      (.init(fieldDelimiter: ","), 7 / 4),
+      (.init(fieldDelimiter: ";"), 10 / 3),
     ]
     let csv = #"""
       7,5; Mon, Jan 12;6,40
@@ -89,8 +89,8 @@ extension DialectDetectorTests {
       """
 
     let dialects: [(DialectDetector.Dialect, Double)] = [
-      (.init(fieldDelimiter: [","]), 1.0),
-      (.init(fieldDelimiter: [";"]), 0.5),
+      (.init(fieldDelimiter: ","), 1.0),
+      (.init(fieldDelimiter: ";"), 0.5),
     ]
 
     for (dialect, expectedScore) in dialects {
@@ -121,7 +121,7 @@ extension DialectDetectorTests {
       (",\n,", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
       (",foo\n,bar", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
+    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
 
     for (csv, expected) in abstractions {
       let abstraction = DialectDetector.makeAbstraction(stringScalars: Array(csv.unicodeScalars), dialect: dialect)
@@ -135,7 +135,7 @@ extension DialectDetectorTests {
       (#"  "foo ""quoted"" \n ,bar",baz  "#, [.cell, .fieldDelimiter, .cell]),
       (#"  a,"bc""d""e""f""a",\n         "#, [.cell, .fieldDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
+    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
     for (csv, expected) in escapingAbstractions {
       let strippedCSV = csv.trimmingCharacters(in: .whitespaces)
       let abstraction = DialectDetector.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
@@ -144,7 +144,7 @@ extension DialectDetectorTests {
   }
 
   func test_makeAbstraction_HandlesInvalidEscaping() throws {
-    let dialect = DialectDetector.Dialect(fieldDelimiter: [","])
+    let dialect = DialectDetector.Dialect(fieldDelimiter: ",")
     let malformedCSVs: [(String, [DialectDetector.Abstraction])] = [
       // escaping
       (#"  foo,x"bar"  "#, [.cell, .fieldDelimiter, .cell]),

@@ -27,11 +27,11 @@
 struct DialectDetector {
   let dialects: [Dialect]
 
-  init(fieldDelimiters: [[Unicode.Scalar]], rowDelimiters: [Set<[Unicode.Scalar]>]) {
+  init(fieldDelimiters: [FieldDelimiter], rowDelimiters: [RowDelimiterSet]) {
     self.dialects = Self.makeDialects(fieldDelimiters: fieldDelimiters, rowDelimiters: rowDelimiters)
   }
 
-  static func makeDialects(fieldDelimiters: [[Unicode.Scalar]], rowDelimiters: [Set<[Unicode.Scalar]>]) -> [Dialect] {
+  static func makeDialects(fieldDelimiters: [FieldDelimiter], rowDelimiters: [RowDelimiterSet]) -> [Dialect] {
     let indexPairs = fieldDelimiters.indices.flatMap { fieldIndex in
       rowDelimiters.indices.map { rowIndex in
         (fieldIndex: fieldIndex, rowIndex: rowIndex)
@@ -78,7 +78,7 @@ struct DialectDetector {
 
     let best = scores.max { a, b in a.value < b.value }
 
-    return best?.key ?? Dialect(fieldDelimiter: [","])
+    return best?.key ?? Dialect(fieldDelimiter: ",")
   }
 
   private static let eps = 0.001
@@ -122,20 +122,20 @@ struct DialectDetector {
       self.delimiters = delimiters
     }
 
-    init(fieldDelimiter: [Unicode.Scalar], rowDelimiter: Set<[Unicode.Scalar]> = .init(arrayLiteral: ["\n"])) {
-      self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)!
+    init(fieldDelimiter: FieldDelimiter, rowDelimiter: RowDelimiterSet = .init(rowDelimiterSet: [RowDelimiter(stringLiteral: "\n")])) {
+      self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)
     }
   }
 }
 
 extension Delimiter.Scalars: Equatable {
-  static func == (lhs: Delimiter.Scalars, rhs: Delimiter.Scalars) -> Bool {
+  public static func == (lhs: Delimiter.Scalars, rhs: Delimiter.Scalars) -> Bool {
     lhs.field == rhs.field && lhs.row == rhs.row
   }
 }
 
 extension Delimiter.Scalars: Hashable {
-  func hash(into hasher: inout Hasher) {
+  public func hash(into hasher: inout Hasher) {
     self.field.hash(into: &hasher)
     self.row.hash(into: &hasher)
   }
@@ -169,10 +169,8 @@ extension DialectDetector {
   }
 
   static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> [Abstraction]? {
-    let rowDelim = String(String.UnicodeScalarView(dialect.delimiters.row.first!))
-
     var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: .init(delimiter: .use(dialect.delimiters.field)), row: .init(stringLiteral: rowDelim))
+    configuration.delimiters = (field: .init(delimiter: .use(dialect.delimiters.field)), row: .init(delimiter: .use(dialect.delimiters.row)))
 
     let iter = stringScalars.makeIterator()
     let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)

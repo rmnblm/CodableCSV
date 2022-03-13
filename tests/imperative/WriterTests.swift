@@ -22,7 +22,7 @@ extension WriterTests {
     /// - parameter sample: The data to be encoded as a CSV.
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVWriter.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -84,8 +84,8 @@ extension WriterTests {
   /// All delimiters (both field and row delimiters) will be used.
   func testRegularUsage() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [RowDelimiter] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [FieldDelimiter] = [",", ";", "\t", "|", "||", "|-|"]
     let escapingStrategy: [Strategy.Escaping] = [.none, .doubleQuote]
     let encodings: [String.Encoding] = [.utf8, .utf16LittleEndian, .utf16BigEndian, .utf16LittleEndian, .utf32BigEndian]
     // B. The data used for testing.
@@ -109,7 +109,7 @@ extension WriterTests {
     // 1. Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVWriter.Configuration.Delimiters = (f, r)
         // 2. Generate the data for the given configuration values.
         let sample = _TestData.toCSV(input, delimiters: pair)
 
