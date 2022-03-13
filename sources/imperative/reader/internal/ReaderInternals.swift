@@ -89,7 +89,7 @@ extension CSVReader.Settings {
   public struct Delimiters {
     /// The exact composition of unicode scalars indetifying a field delimiter.
     /// - invariant: The array always contains at least one element.
-    let field: Delimiter_
+    let field: Delimiter
     /// All possile row delimiters specifying its exact compositon of unicode scalars.
     /// - invariant: The set always contains at least one element and all set elements always contain at least on scalar.
     let row: RowDelimiterSet
@@ -97,7 +97,7 @@ extension CSVReader.Settings {
     /// Designated initializer checking that the delimiters aren't empty and the field delimiter is not included in the row delimiter.
     /// - parameter field: The exact composition of the field delimiter. If empty, `nil` is returned.
     /// - parameter row: The exact composition of all possible row delimiters. If it is empty or any of its elements is an empty array, `nil` is returned.
-    public init(field: Delimiter_, row: RowDelimiterSet) {
+    public init(field: Delimiter, row: RowDelimiterSet) {
       self.field = field
       //      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
       self.row = row
@@ -124,7 +124,7 @@ fileprivate extension CSVReader.Error {
   /// Error raised when a delimiter (whether row or field) is included in the trim character set.
   /// - parameter trimCharacters: The character set selected from trimming.
   /// - parameter field: The delimiter contained within the trim characters.
-  static func _invalidTrimCharacters(_ trimCharacters: CharacterSet, field: Delimiter_) -> CSVError<CSVReader> {
+  static func _invalidTrimCharacters(_ trimCharacters: CharacterSet, field: Delimiter) -> CSVError<CSVReader> {
     CSVError(.invalidConfiguration,
              reason: "The trim character set includes the field delimiter.",
              help: "Remove the delimiter scalars from the trim character set.",

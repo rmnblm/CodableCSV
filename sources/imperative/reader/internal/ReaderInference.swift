@@ -146,7 +146,7 @@ extension CSVReader {
   /// - throws: `CSVError<CSVReader>` exclusively.
   /// - todo: Implement the field and row inferences.
   static func inferDelimiters(field: Configuration.FieldDelimiter, row: Configuration.RowDelimiter, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Settings.Delimiters {
-    let fieldDelimiterOptions: [Delimiter_]
+    let fieldDelimiterOptions: [Delimiter]
     let rowDelimiterOptions: [RowDelimiterSet]
 
     switch (field.delimiter, row.delimiter) {

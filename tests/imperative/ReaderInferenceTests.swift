@@ -94,8 +94,6 @@ extension ReaderInferenceTests {
     c.delimiters = (field: .infer(options: [",", "--"]), row: .init("", "")!)
 
 
-//    let x: InferrableDelimiter = .
-
     // Writer
     // - Configuration
     //   - Delimiters
@@ -103,22 +101,36 @@ extension ReaderInferenceTests {
     // Delimiter
     // - Pair
 
-    // Configuration: (field: StaticDelimiter, row: StaticDelimiter) aka CSVWriter.Configuration.Delimiters
+    // Configuration: (field: Delimiter, row: Delimiter) aka CSVWriter.Configuration.Delimiters
     // a) Settings: (field: [Unicode.Scalar], row: [Unicode.Scalar])
-    // b) Settings: (field: StaticDelimiter, row: StaticDelimiter)
-
+    // b) Settings: (field: Delimiter, row: Delimiter)
 
     // Reader
     // - Configuration
     //   - Delimiters
+    //   - FieldDelimiter
+    //   - RowDelimiter
     // - Settings
     //   - Delimiters
+
+//    OR
+
+    // Reader
+    // - Configuration
+    //   - Delimiter
+    //     - Pair
+    //     - Field
+    //     - Row
+    // - Settings
+    //   - Delimiter
+    //     - Pair
+
 
     // - Delimiter
     //   - Field
     //   - Row
 
     // Configuration: (field: CSVReader.Configuration.Delimiter.Field, row: CSVReader.Configuration.Delimiter.Row) aka CSVReader.Configuration.Delimiters
-    // Settings: (field: StaticDelimiter, row: Set<StaticDelimiter>) aka CSVReader.Settings.Delimiters
+    // Settings: (field: Delimiter, row: Set<Delimiter>) aka CSVReader.Settings.Delimiters
   }
 }

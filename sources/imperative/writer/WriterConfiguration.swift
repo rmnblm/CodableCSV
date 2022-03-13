@@ -28,7 +28,7 @@ extension CSVWriter {
     }
 
     // TODO: Ensure field and row are mutually exclusive as part of type
-    public typealias Delimiters = (field: Delimiter_, row: Delimiter_)
+    public typealias Delimiters = (field: Delimiter, row: Delimiter)
   }
 }
 

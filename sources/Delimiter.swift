@@ -1,10 +1,4 @@
-/// Separators scalars/strings.
-//public enum Delimiter {
-//  /// The CSV pair of delimiters (field & row delimiters).
-//  public typealias Pair = (field: Self.Field, row: Self.Row)
-//}
-
-public struct Delimiter_: Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
+public struct Delimiter: Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
   let scalars: [Unicode.Scalar]
 
   public init(scalars: [Unicode.Scalar]) {
@@ -30,13 +24,13 @@ public struct Delimiter_: Hashable, ExpressibleByStringLiteral, CustomStringConv
   }
 }
 
-extension Delimiter_: Sequence {
+extension Delimiter: Sequence {
   public func makeIterator() -> Array<Element>.Iterator {
     self.scalars.makeIterator()
   }
 }
 
-extension Delimiter_: Collection {
+extension Delimiter: Collection {
   public typealias Element = Unicode.Scalar
   public typealias Index = Array<Element>.Index
 
@@ -57,15 +51,15 @@ extension Delimiter_: Collection {
   }
 }
 
-extension Delimiter_ {
+extension Delimiter {
   public typealias Pair = (field: Self, row: Self)
 }
 
 protocol InferrableDelimiter: ExpressibleByNilLiteral, ExpressibleByStringLiteral {
-  static var defaultInferenceOptions: [Delimiter_] { get }
-  static func infer(options: [Delimiter_]) -> Self
+  static var defaultInferenceOptions: [Delimiter] { get }
+  static func infer(options: [Delimiter]) -> Self
 
-  init(delimiter: Delimiter_)
+  init(delimiter: Delimiter)
 }
 
 extension InferrableDelimiter {
@@ -103,7 +97,7 @@ extension CSVReader.Configuration {
     /// The field delimiter is represented by the given `String`-like type.
     /// - parameter delimiter: The exact composition of the field delimiter. If empty, the initializer fails returning `nil`.
     public init?<S:StringProtocol>(_ delimiter: S) {
-      guard let fieldDelimiter = Delimiter_.init(delimiter)
+      guard let fieldDelimiter = Delimiter.init(delimiter)
       else { return nil }
 
       self.delimiter = .use(fieldDelimiter)
@@ -125,18 +119,18 @@ extension CSVReader.Configuration {
     }
 
     enum _Delimiter {
-      case use(Delimiter_)
-      case infer(options: [Delimiter_])
+      case use(Delimiter)
+      case infer(options: [Delimiter])
     }
   }
 }
 
 extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
-  static var defaultInferenceOptions: [Delimiter_] {
+  static var defaultInferenceOptions: [Delimiter] {
     [",", ";", "\t"]
   }
 
-  init(delimiter: Delimiter_) {
+  init(delimiter: Delimiter) {
     //    self.delimiter = .use(delimiter)
     self.init(delimiter: .use(delimiter))
   }
@@ -144,7 +138,7 @@ extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
   /// Automatically infer the field delimiter out of a list of provided delimiters.
   /// - parameter options: The possible delimiters
   /// - returns: An instance of `Self` initialized for inference
-  public static func infer(options: [Delimiter_]) -> Self {
+  public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
     // TODO: Figure out what to do when `options` contains the same delimiter multiple times
     return self.init(delimiter: .infer(options: options))
@@ -167,9 +161,9 @@ extension CSVReader.Configuration {
     /// Creates one or more possible row delimiters.
     /// - parameter delimiters:The exact composition of the row delimiters. If any of the `delimiters` is empty, the initializer fails returning `nil`.
     public init?<S:StringProtocol>(_ delimiters: S...) {
-      let scalars: [Delimiter_] = delimiters.compactMap {
+      let scalars: [Delimiter] = delimiters.compactMap {
         guard !$0.isEmpty else { return nil }
-        return Delimiter_(scalars: Array($0.unicodeScalars))
+        return Delimiter(scalars: Array($0.unicodeScalars))
       }
       guard !scalars.isEmpty else { return nil }
       self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
@@ -205,18 +199,18 @@ extension CSVReader.Configuration {
 
     enum _Delimiter {
       case use(RowDelimiterSet)
-      case infer(options: [Delimiter_])
+      case infer(options: [Delimiter])
     }
   }
 }
 
 extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
-  static var defaultInferenceOptions: [Delimiter_] {
+  static var defaultInferenceOptions: [Delimiter] {
     ["\n", "\r\n"]
   }
 
-  init(delimiter: Delimiter_) {
-    var delimiters = Set<Delimiter_>(minimumCapacity: 1)
+  init(delimiter: Delimiter) {
+    var delimiters = Set<Delimiter>(minimumCapacity: 1)
     delimiters.insert(delimiter)
     self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
   }
@@ -224,7 +218,7 @@ extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
   /// Automatically infer the field delimiter out of a list of provided delimiters.
   /// - parameter options: The possible delimiters, must not be empty
   /// - returns: An instance of `Self` initialized for inference
-  public static func infer(options: [Delimiter_]) -> Self {
+  public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
     // TODO: Figure out what to do when `options` contains the same delimiter multiple times
     return self.init(delimiter: .infer(options: options))
@@ -232,19 +226,19 @@ extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
 }
 
 public struct RowDelimiterSet: ExpressibleByArrayLiteral, ExpressibleByStringLiteral {
-  let rowDelimiterSet: Set<Delimiter_>
+  let rowDelimiterSet: Set<Delimiter>
 
-  public init(rowDelimiterSet: Set<Delimiter_>) {
+  public init(rowDelimiterSet: Set<Delimiter>) {
     precondition(!rowDelimiterSet.isEmpty)
     self.rowDelimiterSet = rowDelimiterSet
   }
 
-  public init(arrayLiteral elements: Delimiter_...) {
+  public init(arrayLiteral elements: Delimiter...) {
     self.init(rowDelimiterSet: Set(elements))
   }
 
   public init(stringLiteral value: String) {
-    self.init(rowDelimiterSet: Set([Delimiter_(stringLiteral: value)]))
+    self.init(rowDelimiterSet: Set([Delimiter(stringLiteral: value)]))
   }
 }
 
