@@ -103,6 +103,15 @@ extension CSVReader.Settings {
       self.row = row
       //      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
     }
+
+    init?(delimiters: CSVReader.Configuration.Delimiters) {
+      guard
+        case .use(let delimiter) = delimiters.field.delimiter,
+        case .use(let rowDelimiterSet) = delimiters.row.delimiter
+      else { return nil }
+      
+      self.init(field: delimiter, row: rowDelimiterSet)
+    }
   }
 }
 
