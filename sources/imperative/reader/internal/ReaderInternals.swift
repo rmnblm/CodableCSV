@@ -41,7 +41,7 @@ extension CSVReader {
   /// Private configuration variables for the CSV reader.
   struct Settings {
     /// The unicode scalar delimiters for fields and rows.
-    let delimiters: Delimiter.Scalars
+    let delimiters: Delimiters
     /// The unicode scalar used as encapsulator and escaping character (when printed two times).
     let escapingScalar: Unicode.Scalar?
     /// The characters set to be trimmed at the beginning and ending of each field.
@@ -83,6 +83,42 @@ extension CSVReader {
 //    typealias Delimiters = (field: Delimiter_, row: RowDelimiterSet)
   }
 }
+
+extension CSVReader.Settings {
+  /// Contains the exact composition of a CSV field and row delimiter.
+  public struct Delimiters {
+    /// The exact composition of unicode scalars indetifying a field delimiter.
+    /// - invariant: The array always contains at least one element.
+    let field: Delimiter_
+    /// All possile row delimiters specifying its exact compositon of unicode scalars.
+    /// - invariant: The set always contains at least one element and all set elements always contain at least on scalar.
+    let row: RowDelimiterSet
+
+    /// Designated initializer checking that the delimiters aren't empty and the field delimiter is not included in the row delimiter.
+    /// - parameter field: The exact composition of the field delimiter. If empty, `nil` is returned.
+    /// - parameter row: The exact composition of all possible row delimiters. If it is empty or any of its elements is an empty array, `nil` is returned.
+    public init(field: Delimiter_, row: RowDelimiterSet) {
+      self.field = field
+      //      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
+      self.row = row
+      //      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
+    }
+  }
+}
+
+extension CSVReader.Settings.Delimiters: Equatable {
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.field == rhs.field && lhs.row == rhs.row
+  }
+}
+
+extension CSVReader.Settings.Delimiters: Hashable {
+  func hash(into hasher: inout Hasher) {
+    self.field.hash(into: &hasher)
+    self.row.hash(into: &hasher)
+  }
+}
+
 
 fileprivate extension CSVReader.Error {
   /// Error raised when a delimiter (whether row or field) is included in the trim character set.

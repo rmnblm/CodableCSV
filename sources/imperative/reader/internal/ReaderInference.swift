@@ -1,4 +1,4 @@
-extension Delimiter.Scalars {
+extension CSVReader.Settings.Delimiters {
   /// Closure accepting a scalar and returning a Boolean indicating whether the scalar (and subsquent unicode scalars from the input) form a delimiter.
   /// - parameter scalar: The scalar that may start a delimiter.
   /// - throws: `CSVError<CSVReader>` exclusively.
@@ -75,7 +75,7 @@ extension Delimiter.Scalars {
   }
 }
 
-extension Delimiter.Scalars {
+extension CSVReader.Settings.Delimiters {
   /// Creates a delimiter identifier closure.
   /// - parameter delimiter: The value to be checked for.
   /// - parameter buffer: A unicode character buffer containing further characters to parse.
@@ -145,7 +145,7 @@ extension CSVReader {
   /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
   /// - throws: `CSVError<CSVReader>` exclusively.
   /// - todo: Implement the field and row inferences.
-  static func inferDelimiters(field: Delimiter.Field, row: Delimiter.Row, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Delimiter.Scalars {
+  static func inferDelimiters(field: Configuration.FieldDelimiter, row: Configuration.RowDelimiter, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Settings.Delimiters {
     let fieldDelimiterOptions: [Delimiter_]
     let rowDelimiterOptions: [RowDelimiterSet]
 
@@ -175,7 +175,7 @@ extension CSVReader {
 
     buffer.preppend(scalars: tmp)
 
-//    guard let delimiters = Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
+//    guard let delimiters = CSVReader.Configuration.Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
 //      throw Error._invalidDelimiters(fieldScalars: fieldDelimiterScalars, rowScalars: rowDelimiterScalars)
 //    }
 

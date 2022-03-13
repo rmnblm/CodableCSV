@@ -47,7 +47,7 @@ struct DialectDetector {
     }
 
     return delimiterCombinations
-      .compactMap(Delimiter.Scalars.init(field:row:))
+      .compactMap(CSVReader.Settings.Delimiters.init(field:row:))
       .map(Dialect.init(delimiters:))
   }
 
@@ -113,31 +113,18 @@ struct DialectDetector {
 
   /// Describes a CSV file's formatting.
   struct Dialect: Hashable {
-    let delimiters: Delimiter.Scalars
+    let delimiters: CSVReader.Settings.Delimiters
 //    let fieldDelimiter: [Unicode.Scalar]
 //    let rowDelimiter: Unicode.Scalar = "\n"
 //    let escapeCharacter: Unicode.Scalar = "\""
 
-    init(delimiters: Delimiter.Scalars) {
+    init(delimiters: CSVReader.Settings.Delimiters) {
       self.delimiters = delimiters
     }
 
     init(fieldDelimiter: Delimiter_, rowDelimiter: RowDelimiterSet = .init(rowDelimiterSet: [Delimiter_(stringLiteral: "\n")])) {
       self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)
     }
-  }
-}
-
-extension Delimiter.Scalars: Equatable {
-  public static func == (lhs: Delimiter.Scalars, rhs: Delimiter.Scalars) -> Bool {
-    lhs.field == rhs.field && lhs.row == rhs.row
-  }
-}
-
-extension Delimiter.Scalars: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    self.field.hash(into: &hasher)
-    self.row.hash(into: &hasher)
   }
 }
 
@@ -226,7 +213,7 @@ extension DialectDetector {
 //    let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
 //    let decoder = CSVReader.makeDecoder(from: iter)
 //
-//    let x = Delimiter.Scalars._makeMatcher(delimiter: dialect.fieldDelimiter, buffer: buffer, decoder: decoder)
+//    let x = CSVReader.Configuration.Delimiter.Scalars._makeMatcher(delimiter: dialect.fieldDelimiter, buffer: buffer, decoder: decoder)
 //
 //
 //    while let scalar = queuedNextScalar ?? iter.next() {

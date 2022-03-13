@@ -21,7 +21,7 @@ final class ReaderInferenceTests: XCTestCase {
     /// - parameter sample:
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -30,7 +30,7 @@ final class ReaderInferenceTests: XCTestCase {
 
 extension ReaderInferenceTests {
   func testInference() throws {
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "|", "\t"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "|", "\t"]
 
     var configuration = CSVReader.Configuration()
     configuration.delimiters = (field: "", row: "\n")
@@ -43,7 +43,7 @@ extension ReaderInferenceTests {
   }
 
   func testInference_longRows() throws {
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "|", "\t"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "|", "\t"]
 
     var configuration = CSVReader.Configuration()
     configuration.delimiters = (field: nil, row: "\n")
@@ -91,26 +91,34 @@ extension ReaderInferenceTests {
     c.delimiters = (field: "--", row: "--")
     c.delimiters = (field: .infer(options: [",", "--"]), row: "--")
     c.delimiters = (field: .infer(options: [",", "--"]), row: .infer(options: ["\n", "--"]))
+    c.delimiters = (field: .infer(options: [",", "--"]), row: .init("", "")!)
+
+
+//    let x: InferrableDelimiter = .
 
     // Writer
-    // Configuration: (field: StaticField, row: StaticRow) where field != row
-    // Settings: (field: [Unicode.Scalar], row: [Unicode.Scalar]) where field != row
+    // - Configuration
+    //   - Delimiters
+
+    // Delimiter
+    // - Pair
+
+    // Configuration: (field: StaticDelimiter, row: StaticDelimiter) aka CSVWriter.Configuration.Delimiters
+    // a) Settings: (field: [Unicode.Scalar], row: [Unicode.Scalar])
+    // b) Settings: (field: StaticDelimiter, row: StaticDelimiter)
+
 
     // Reader
-    // Configuration: (field: InferrableField, row: InferrableRow)
-    // Settings: (field: StaticField, row: Set<StaticRow>)
+    // - Configuration
+    //   - Delimiters
+    // - Settings
+    //   - Delimiters
 
+    // - Delimiter
+    //   - Field
+    //   - Row
 
-    // Supports inference
-    // Delimiter.Pair: (Delimiter.Field, Delimiter.Row)
-    // - Delimiter.Field: literal + infer
-    // - Delimiter.Row: literal + infer
-
-    // Is static and guaranteed to be valid
-    // Delimiter.Scalars: (Delimiter_, RowDelimiterSet)
-    // - Delimiter_: [Unicode.Scalar]
-    // - RowDelimiter: [Unicode.Scalar]
-    // - RowDelimiterSet: Set<RowDelimiter> a.k.a. Set<[Unicode.Scalar]>
-
+    // Configuration: (field: CSVReader.Configuration.Delimiter.Field, row: CSVReader.Configuration.Delimiter.Row) aka CSVReader.Configuration.Delimiters
+    // Settings: (field: StaticDelimiter, row: Set<StaticDelimiter>) aka CSVReader.Settings.Delimiters
   }
 }

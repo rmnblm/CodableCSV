@@ -8,7 +8,7 @@ extension CSVReader {
     /// If no encoding is provided and the input data doesn't contain a Byte Order Marker (BOM), UTF8 is presumed.
     public var encoding: String.Encoding?
     /// The field and row delimiters.
-    public var delimiters: Delimiter.Pair // (field: InferrableField, row: InferrableRow)
+    public var delimiters: Delimiters // (field: InferrableField, row: InferrableRow)
     /// The strategy to allow/disable escaped fields and how.
     public var escapingStrategy: Strategy.Escaping
     /// Indication on whether the CSV will contain a header row or not, or that information is unknown and it should try to be inferred.
@@ -27,6 +27,8 @@ extension CSVReader {
       self.trimStrategy = CharacterSet()
       self.presample = false
     }
+
+    public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
   }
 }
 
