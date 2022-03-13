@@ -27,11 +27,11 @@
 struct DialectDetector {
   let dialects: [Dialect]
 
-  init(fieldDelimiters: [FieldDelimiter], rowDelimiters: [RowDelimiterSet]) {
+  init(fieldDelimiters: [Delimiter_], rowDelimiters: [RowDelimiterSet]) {
     self.dialects = Self.makeDialects(fieldDelimiters: fieldDelimiters, rowDelimiters: rowDelimiters)
   }
 
-  static func makeDialects(fieldDelimiters: [FieldDelimiter], rowDelimiters: [RowDelimiterSet]) -> [Dialect] {
+  static func makeDialects(fieldDelimiters: [Delimiter_], rowDelimiters: [RowDelimiterSet]) -> [Dialect] {
     let indexPairs = fieldDelimiters.indices.flatMap { fieldIndex in
       rowDelimiters.indices.map { rowIndex in
         (fieldIndex: fieldIndex, rowIndex: rowIndex)
@@ -122,7 +122,7 @@ struct DialectDetector {
       self.delimiters = delimiters
     }
 
-    init(fieldDelimiter: FieldDelimiter, rowDelimiter: RowDelimiterSet = .init(rowDelimiterSet: [RowDelimiter(stringLiteral: "\n")])) {
+    init(fieldDelimiter: Delimiter_, rowDelimiter: RowDelimiterSet = .init(rowDelimiterSet: [Delimiter_(stringLiteral: "\n")])) {
       self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)
     }
   }

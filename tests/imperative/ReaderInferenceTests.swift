@@ -107,8 +107,8 @@ extension ReaderInferenceTests {
     // - Delimiter.Row: literal + infer
 
     // Is static and guaranteed to be valid
-    // Delimiter.Scalars: (FieldDelimiter, RowDelimiterSet)
-    // - FieldDelimiter: [Unicode.Scalar]
+    // Delimiter.Scalars: (Delimiter_, RowDelimiterSet)
+    // - Delimiter_: [Unicode.Scalar]
     // - RowDelimiter: [Unicode.Scalar]
     // - RowDelimiterSet: Set<RowDelimiter> a.k.a. Set<[Unicode.Scalar]>
 

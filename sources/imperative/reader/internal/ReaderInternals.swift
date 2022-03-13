@@ -80,7 +80,7 @@ extension CSVReader {
     }
 
     // TODO: Ensure field and row are mutually exclusive as part of type
-//    typealias Delimiters = (field: FieldDelimiter, row: RowDelimiterSet)
+//    typealias Delimiters = (field: Delimiter_, row: RowDelimiterSet)
   }
 }
 
@@ -88,7 +88,7 @@ fileprivate extension CSVReader.Error {
   /// Error raised when a delimiter (whether row or field) is included in the trim character set.
   /// - parameter trimCharacters: The character set selected from trimming.
   /// - parameter field: The delimiter contained within the trim characters.
-  static func _invalidTrimCharacters(_ trimCharacters: CharacterSet, field: FieldDelimiter) -> CSVError<CSVReader> {
+  static func _invalidTrimCharacters(_ trimCharacters: CharacterSet, field: Delimiter_) -> CSVError<CSVReader> {
     CSVError(.invalidConfiguration,
              reason: "The trim character set includes the field delimiter.",
              help: "Remove the delimiter scalars from the trim character set.",

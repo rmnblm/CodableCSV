@@ -43,7 +43,7 @@ extension CSVWriter {
     init(configuration: CSVWriter.Configuration, encoding: String.Encoding) throws {
       // 1. The field and row delimiters must be defined and they cannot be the same.
       let delimiters = configuration.delimiters
-      guard delimiters.field.scalars != delimiters.row.scalars
+      guard delimiters.field != delimiters.row
       else { throw Error._invalidDelimiters() }
 
       self.delimiters = (field: delimiters.field.scalars, row: delimiters.row.scalars)

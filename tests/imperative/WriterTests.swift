@@ -84,8 +84,8 @@ extension WriterTests {
   /// All delimiters (both field and row delimiters) will be used.
   func testRegularUsage() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [RowDelimiter] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [FieldDelimiter] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [Delimiter_] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [Delimiter_] = [",", ";", "\t", "|", "||", "|-|"]
     let escapingStrategy: [Strategy.Escaping] = [.none, .doubleQuote]
     let encodings: [String.Encoding] = [.utf8, .utf16LittleEndian, .utf16BigEndian, .utf16LittleEndian, .utf32BigEndian]
     // B. The data used for testing.
