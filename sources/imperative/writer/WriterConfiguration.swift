@@ -18,7 +18,7 @@ extension CSVWriter {
     /// If empty, no row will be written.
     public var headers: [String]
 
-    /// Designated initlaizer setting the default values.
+    /// Designated initializer setting the default values.
     public init() {
       self.encoding = nil
       self.bomStrategy = .convention
@@ -27,7 +27,8 @@ extension CSVWriter {
       self.headers = Array()
     }
 
-    // TODO: Ensure field and row are mutually exclusive as part of type
+    /// The CSV pair of delimiters (field & row delimiters).
+    /// - todo: Ensure field and row are mutually exclusive as part of type.
     public typealias Delimiters = (field: Delimiter, row: Delimiter)
   }
 }

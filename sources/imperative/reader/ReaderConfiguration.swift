@@ -8,7 +8,7 @@ extension CSVReader {
     /// If no encoding is provided and the input data doesn't contain a Byte Order Marker (BOM), UTF8 is presumed.
     public var encoding: String.Encoding?
     /// The field and row delimiters.
-    public var delimiters: Delimiters // (field: InferrableField, row: InferrableRow)
+    public var delimiters: Delimiters
     /// The strategy to allow/disable escaped fields and how.
     public var escapingStrategy: Strategy.Escaping
     /// Indication on whether the CSV will contain a header row or not, or that information is unknown and it should try to be inferred.
@@ -27,8 +27,6 @@ extension CSVReader {
       self.trimStrategy = CharacterSet()
       self.presample = false
     }
-
-    public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
   }
 }
 
@@ -86,13 +84,9 @@ extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
   }
 
   init(delimiter: Delimiter) {
-    //    self.delimiter = .use(delimiter)
-    self.init(delimiter: .use(delimiter))
+    self.delimiter = .use(delimiter)
   }
 
-  /// Automatically infer the field delimiter out of a list of provided delimiters.
-  /// - parameter options: The possible delimiters
-  /// - returns: An instance of `Self` initialized for inference
   public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
     // TODO: Figure out what to do when `options` contains the same delimiter multiple times
@@ -149,12 +143,12 @@ extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
     self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
   }
 
-  /// Automatically infer the field delimiter out of a list of provided delimiters.
-  /// - parameter options: The possible delimiters, must not be empty
-  /// - returns: An instance of `Self` initialized for inference
   public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
-    // TODO: Figure out what to do when `options` contains the same delimiter multiple times
     return self.init(delimiter: .infer(options: options))
   }
+}
+
+extension CSVReader.Configuration {
+  public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
 }

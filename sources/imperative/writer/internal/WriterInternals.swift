@@ -29,7 +29,7 @@ extension CSVWriter {
   /// Private configuration variables for the CSV writer.
   struct Settings {
     /// The unicode scalar delimiters for fields and rows.
-    let delimiters: (field: [Unicode.Scalar], row: [Unicode.Scalar])
+    let delimiters: Delimiters
     /// The unicode scalar used as encapsulator and escaping character (when printed two times).
     let escapingScalar: Unicode.Scalar?
     /// Boolean indicating whether the received CSV contains a header row or not.
@@ -52,6 +52,8 @@ extension CSVWriter {
       self.headers = configuration.headers
       self.encoding = encoding
     }
+
+    typealias Delimiters = (field: [Unicode.Scalar], row: [Unicode.Scalar])
   }
 }
 

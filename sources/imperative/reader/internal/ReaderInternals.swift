@@ -56,7 +56,7 @@ extension CSVReader {
     /// - throws: `CSVError<CSVReader>` exclusively.
     init(configuration: Configuration, decoder: ScalarDecoder, buffer: ScalarBuffer) throws {
       // 1. Figure out the field and row delimiters.
-      self.delimiters = try CSVReader.inferDelimiters(field: configuration.delimiters.field, row: configuration.delimiters.row, decoder: decoder, buffer: buffer)
+      self.delimiters = try CSVReader.infer(delimiters: configuration.delimiters, decoder: decoder, buffer: buffer)
       // 2. Set the escaping scalar.
       self.escapingScalar = configuration.escapingStrategy.scalar
       // 3. Set the trim characters set.
@@ -84,7 +84,7 @@ extension CSVReader {
 extension CSVReader.Settings {
   /// Contains the exact composition of a CSV field and row delimiter.
   public struct Delimiters {
-    /// The exact composition of unicode scalars indetifying a field delimiter.
+    /// The exact composition of unicode scalars identifying a field delimiter.
     /// - invariant: The array always contains at least one element.
     let field: Delimiter
     /// All possile row delimiters specifying its exact compositon of unicode scalars.
@@ -99,15 +99,6 @@ extension CSVReader.Settings {
       //      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
       self.row = row
       //      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
-    }
-
-    init?(delimiters: CSVReader.Configuration.Delimiters) {
-      guard
-        case .use(let delimiter) = delimiters.field.delimiter,
-        case .use(let rowDelimiterSet) = delimiters.row.delimiter
-      else { return nil }
-      
-      self.init(field: delimiter, row: rowDelimiterSet)
     }
   }
 }
@@ -125,7 +116,7 @@ extension CSVReader.Settings.Delimiters: Hashable {
   }
 }
 
-public struct RowDelimiterSet: ExpressibleByArrayLiteral, ExpressibleByStringLiteral {
+public struct RowDelimiterSet: Hashable, ExpressibleByArrayLiteral, ExpressibleByStringLiteral {
   let rowDelimiterSet: Set<Delimiter>
 
   public init(rowDelimiterSet: Set<Delimiter>) {
@@ -141,8 +132,6 @@ public struct RowDelimiterSet: ExpressibleByArrayLiteral, ExpressibleByStringLit
     self.init(rowDelimiterSet: Set([Delimiter(stringLiteral: value)]))
   }
 }
-
-extension RowDelimiterSet: Hashable {}
 
 fileprivate extension CSVReader.Error {
   /// Error raised when a delimiter (whether row or field) is included in the trim character set.

@@ -58,13 +58,6 @@ extension Delimiter: Collection {
   }
 }
 
-// MARK: - Delimiter.Pair
-
-extension Delimiter {
-  /// The CSV pair of delimiters (field & row delimiters).
-  public typealias Pair = (field: Self, row: Self)
-}
-
 // MARK: - InferrableDelimiter
 
 /// A delimiter which supports inference.
@@ -73,8 +66,8 @@ protocol InferrableDelimiter: ExpressibleByNilLiteral, ExpressibleByStringLitera
   static var defaultInferenceOptions: [Delimiter] { get }
 
   /// Determine the delimiter by inferring it from the given array of options.
-  /// - parameter options: An array of possible delimiters.
-  /// - returns: An instance of `Self`, initialized for inference.
+  /// - parameter options: An array of possible delimiters. Must not be empty.
+  /// - returns: An instance of `Self` initialized for inference.
   static func infer(options: [Delimiter]) -> Self
 
   /// Creates an inferrable delimiter from the given delimiter.

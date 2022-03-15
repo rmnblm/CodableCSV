@@ -145,18 +145,17 @@ extension CSVReader {
   /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
   /// - throws: `CSVError<CSVReader>` exclusively.
   /// - todo: Implement the field and row inferences.
-  static func inferDelimiters(field: Configuration.FieldDelimiter, row: Configuration.RowDelimiter, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Settings.Delimiters {
+  static func infer(delimiters: Configuration.Delimiters, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Settings.Delimiters {
     let fieldDelimiterOptions: [Delimiter]
     let rowDelimiterOptions: [RowDelimiterSet]
 
-    switch (field.delimiter, row.delimiter) {
-    case (.use(let fieldDelimiter), .use(let rowDelimiter)):
-      fieldDelimiterOptions = [fieldDelimiter]
-      rowDelimiterOptions = [rowDelimiter]
+    switch (delimiters.field.delimiter, delimiters.row.delimiter) {
+    case (.use(let fieldDelimiter), .use(let rowDelimiterSet)):
+      return Settings.Delimiters(field: fieldDelimiter, row: rowDelimiterSet)
 
-    case (.infer(let options), .use(let rowDelimiter)):
+    case (.infer(let options), .use(let rowDelimiterSet)):
       fieldDelimiterOptions = options
-      rowDelimiterOptions = [rowDelimiter]
+      rowDelimiterOptions = [rowDelimiterSet]
 
     default: throw Error._unsupportedInference()
     }
