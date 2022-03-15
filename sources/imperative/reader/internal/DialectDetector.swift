@@ -78,7 +78,7 @@ struct DialectDetector {
 
     let best = scores.max { a, b in a.value < b.value }
 
-    return best?.key ?? Dialect(fieldDelimiter: ",")
+    return best?.key
   }
 
   private static let eps = 0.001
@@ -157,7 +157,7 @@ extension DialectDetector {
 
   static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> [Abstraction]? {
     var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: .init(delimiter: .use(dialect.delimiters.field)), row: .init(delimiter: .use(dialect.delimiters.row)))
+    configuration.delimiters = (field: .init(inferenceConfiguration: .use(dialect.delimiters.field)), row: .init(inferenceConfiguration: .use(dialect.delimiters.row)))
 
     let iter = stringScalars.makeIterator()
     let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)

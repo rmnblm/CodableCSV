@@ -364,6 +364,72 @@ extension ReaderTests {
       }
     }
   }
+
+  /// Tests the validation of the reader's configuration.
+  func testConfiguration() {
+    let validConfigurations: [(inout CSVReader.Configuration) -> Void] = [
+      // normal usage
+      { $0.delimiters = (field: ",", row: "\n") },
+      // multiple row delimiters
+      { $0.delimiters = (field: ",", row: .init("\n", "\r")!) },
+      // `standard` row delimiter
+      { $0.delimiters = (field: ",", row: .standard) },
+      // inference using nil literal API
+//      { $0.delimiters = (field: nil, row: nil) },
+      // inference using new API
+//      { $0.delimiters = (field: .infer, row: .infer) },
+//      { $0.delimiters = (field: .infer(options: [",", ";"]), row: .infer(options: ["\n", "\r", "\r\n"])) },
+//      { $0.delimiters = (field: .infer(options: ["foo", "bar"]), row: .infer(options: ["baz"])) },
+    ]
+
+    for (index, configuration) in validConfigurations.enumerated() {
+      XCTAssertNoThrow(try CSVReader(input: "", setter: configuration), "\(index)")
+    }
+
+    let invalidConfigurations: [(inout CSVReader.Configuration) -> Void] = [
+      // field & row delimiter can not be identical
+      { $0.delimiters = (field: "-", row: "-") },
+      // the row delimiter can not have a prefix identical to the field delimiter & vice-versa
+      { $0.delimiters = (field: "**", row: "**~**") },
+      // escaping scalar can not appear in field delimiter
+      {
+        $0.delimiters = (field: "|-|", row: "\n")
+        $0.escapingStrategy = .scalar("|")
+      },
+      // escaping scalar can not appear in row delimiter
+      {
+        $0.delimiters = (field: ",", row: "**~**")
+        $0.escapingStrategy = .scalar("*")
+      },
+      // field delimiter can not appear in trim character set
+      {
+        $0.delimiters = (field: " ", row: "\n")
+        $0.trimStrategy = .whitespaces
+      },
+      // row delimiter can not appear in trim characer set
+      {
+        $0.delimiters = (field: ",", row: "\n")
+        $0.trimStrategy = .whitespacesAndNewlines
+      },
+      // escaping scalar can not appear in trim character set
+      {
+        $0.escapingStrategy = .scalar("*")
+        $0.trimStrategy = .punctuationCharacters
+      },
+      // field & row delimiters, including inference options, must be mutually exclusive
+      { $0.delimiters = (field: .infer, row: ",") },
+      { $0.delimiters = (field: .infer(options: [",", "--"]), row: "--") },
+      { $0.delimiters = (field: "\n", row: .infer) },
+      { $0.delimiters = (field: "--", row: .infer(options: ["\n", "--"])) },
+      { $0.delimiters = (field: .infer(options: ["\n"]), row: .infer) },
+      { $0.delimiters = (field: .infer, row: .infer(options: [","])) },
+      { $0.delimiters = (field: .infer(options: ["-", ","]), row: .infer(options: ["-", "\n"])) },
+    ]
+
+    for (index, configuration) in invalidConfigurations.enumerated() {
+      XCTAssertThrowsError(try CSVReader(input: "", setter: configuration), "\(index)")
+    }
+  }
 }
 
 // MARK: -

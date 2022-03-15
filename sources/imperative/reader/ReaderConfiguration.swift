@@ -8,7 +8,7 @@ extension CSVReader {
     /// If no encoding is provided and the input data doesn't contain a Byte Order Marker (BOM), UTF8 is presumed.
     public var encoding: String.Encoding?
     /// The field and row delimiters.
-    public var delimiters: Delimiters
+    public var delimiters: Self.Delimiters
     /// The strategy to allow/disable escaped fields and how.
     public var escapingStrategy: Strategy.Escaping
     /// Indication on whether the CSV will contain a header row or not, or that information is unknown and it should try to be inferred.
@@ -51,15 +51,15 @@ extension Strategy {
 }
 
 extension CSVReader.Configuration {
-  /// The delimiter between fields/values.
-  ///
-  /// If the delimiter is initialized with `nil`, it implies the field delimiter is unknown and the system should try to figure it out.
-  public struct FieldDelimiter {
-    /// The accepted field delimiter. Usually a comma `,`.
-    let delimiter: Self._Delimiter
+  public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
+}
 
-    init(delimiter: Self._Delimiter) {
-      self.delimiter = delimiter
+extension CSVReader.Configuration {
+  public struct FieldDelimiter {
+    let inferenceConfiguration: Self.InferenceConfiguration
+
+    init(inferenceConfiguration: Self.InferenceConfiguration) {
+      self.inferenceConfiguration = inferenceConfiguration
     }
 
     /// The field delimiter is represented by the given `String`-like type.
@@ -68,10 +68,10 @@ extension CSVReader.Configuration {
       guard let fieldDelimiter = Delimiter.init(delimiter)
       else { return nil }
 
-      self.delimiter = .use(fieldDelimiter)
+      self.inferenceConfiguration = .use(fieldDelimiter)
     }
 
-    enum _Delimiter {
+    enum InferenceConfiguration {
       case use(Delimiter)
       case infer(options: [Delimiter])
     }
@@ -84,27 +84,21 @@ extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
   }
 
   init(delimiter: Delimiter) {
-    self.delimiter = .use(delimiter)
+    self.inferenceConfiguration = .use(delimiter)
   }
 
   public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
-    // TODO: Figure out what to do when `options` contains the same delimiter multiple times
-    return self.init(delimiter: .infer(options: options))
+    return self.init(inferenceConfiguration: .infer(options: options))
   }
 }
 
 extension CSVReader.Configuration {
-  /// The delimiter between rows.
-  ///
-  /// If the delimiter is initialized with `nil`, it implies the row delimiter is unknown and the system should try to figure it out.
   public struct RowDelimiter: ExpressibleByStringLiteral {
-    /// All the accepted row delimiters. Usually, it is only one.
-    /// - invariant: The elements of the set (i.e. the arrays) always contain at least one element.
-    let delimiter: Self._Delimiter
+    let inferenceConfiguration: Self.InferenceConfiguration
 
-    init(delimiter: Self._Delimiter) {
-      self.delimiter = delimiter
+    init(inferenceConfiguration: Self.InferenceConfiguration) {
+      self.inferenceConfiguration = inferenceConfiguration
     }
 
     /// Creates one or more possible row delimiters.
@@ -115,7 +109,7 @@ extension CSVReader.Configuration {
         return Delimiter(scalars: Array($0.unicodeScalars))
       }
       guard !scalars.isEmpty else { return nil }
-      self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
+      self.inferenceConfiguration = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
     }
 
     /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and s single line feed `\n`.
@@ -125,7 +119,7 @@ extension CSVReader.Configuration {
       self.init("\n", "\r\n")!
     }
 
-    enum _Delimiter {
+    enum InferenceConfiguration {
       case use(RowDelimiterSet)
       case infer(options: [Delimiter])
     }
@@ -140,15 +134,11 @@ extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
   init(delimiter: Delimiter) {
     var delimiters = Set<Delimiter>(minimumCapacity: 1)
     delimiters.insert(delimiter)
-    self.delimiter = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
+    self.inferenceConfiguration = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
   }
 
   public static func infer(options: [Delimiter]) -> Self {
     precondition(!options.isEmpty)
-    return self.init(delimiter: .infer(options: options))
+    return self.init(inferenceConfiguration: .infer(options: options))
   }
-}
-
-extension CSVReader.Configuration {
-  public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
 }

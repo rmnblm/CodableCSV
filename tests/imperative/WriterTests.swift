@@ -201,4 +201,27 @@ extension WriterTests {
       try writer.endEncoding()
     }
   }
+
+  /// Tests the validation of the writer's configuration.
+  func testConfiguration() {
+    let validConfigurations: [(inout CSVWriter.Configuration) -> Void] = [
+      // normal usage
+      { $0.delimiters = (field: ",", row: "\n") },
+    ]
+
+    for (index, configuration) in validConfigurations.enumerated() {
+      XCTAssertNoThrow(try CSVWriter(setter: configuration), "\(index)")
+    }
+
+    let invalidConfigurations: [(inout CSVWriter.Configuration) -> Void] = [
+      // field & row delimiter can not be identical
+      { $0.delimiters = (field: "-", row: "-") },
+      // the row delimiter can not start with the field delimiter & vice-versa
+      { $0.delimiters = (field: "**", row: "**~**") },
+    ]
+
+    for (index, configuration) in invalidConfigurations.enumerated() {
+      XCTAssertThrowsError(try CSVWriter(setter: configuration), "\(index)")
+    }
+  }
 }

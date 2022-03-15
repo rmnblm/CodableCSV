@@ -149,11 +149,32 @@ extension CSVReader {
     let fieldDelimiterOptions: [Delimiter]
     let rowDelimiterOptions: [RowDelimiterSet]
 
-    switch (delimiters.field.delimiter, delimiters.row.delimiter) {
+    switch delimiters.field.inferenceConfiguration {
+    case .use(let fieldDelimiter):
+      break
+    case .infer(let options):
+      guard !options.isEmpty
+      else { throw Error._emptyInferenceOptions() }
+
+//      options.
+    }
+
+    switch delimiters.row.inferenceConfiguration {
+    case .use(let rowDelimiterSet):
+      break
+    case .infer(let options):
+      guard !options.isEmpty
+      else { throw Error._emptyInferenceOptions() }
+    }
+
+    switch (delimiters.field.inferenceConfiguration, delimiters.row.inferenceConfiguration) {
     case (.use(let fieldDelimiter), .use(let rowDelimiterSet)):
       return Settings.Delimiters(field: fieldDelimiter, row: rowDelimiterSet)
 
     case (.infer(let options), .use(let rowDelimiterSet)):
+      guard !options.isEmpty
+      else { throw Error._emptyInferenceOptions() }
+
       fieldDelimiterOptions = options
       rowDelimiterOptions = [rowDelimiterSet]
 
@@ -204,6 +225,12 @@ fileprivate extension CSVReader.Error {
   static func _inferenceFailed() -> CSVError<CSVReader> {
     CSVError(.inferenceFailure,
              reason: "",
+             help: "")
+  }
+  /// TODO
+  static func _emptyInferenceOptions() -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "Inference options can't be empty.",
              help: "")
   }
 }

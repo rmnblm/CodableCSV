@@ -55,51 +55,68 @@ extension ReaderInferenceTests {
     }
   }
 
-  func testTryOutNewAPI() throws {
+  func test_Delimiter() {
+    XCTAssertEqual(Delimiter(scalars: ["~", "~"]).scalars, ["~", "~"])
+    XCTAssertEqual(Delimiter(unicodeScalarLiteral: ",").scalars, [","])
+    XCTAssertEqual(Delimiter(stringLiteral: "~~").scalars, ["~", "~"])
+    XCTAssertEqual(Delimiter(Substring("~~"))?.scalars, ["~", "~"])
+    XCTAssertEqual(Delimiter(Substring("")), nil)
+  }
+
+  func testPairs() {
+    let pairs: [(String, String)] = [
+      ("**-", "**~"),
+    ]
+
+    for (field, row) in pairs {
+      print(field.hasPrefix(row))
+      print(row.hasPrefix(field))
+    }
+  }
+
+  func testExample() throws {
+    let field: [Unicode.Scalar] = ["-", "-"]
+    let row: Set<[Unicode.Scalar]> = [["-"]]
+
+//    guard row.allSatisfy({ $0 != field }) else { fatalError() }
+
+//    let s = "foo-*bar-*baz\nabc-*def-*xyz"
+//    let s = "foo-**bar*-*baz\nabc-*def-*xyz"
+    let s = "foo-*\"-*-*-*bar\"-*baz\nabc-*dev-*xyz"
+    let reader = try CSVReader(input: s) {
+      $0.delimiters = (field: "-*", row: "\n")
+//      $0.escapingStrategy = .scalar("*")
+    }
+
+    for row in reader {
+      print(row)
+    }
+  }
+
+  func testNewApi() {
     var c = CSVReader.Configuration()
-    // current usage
-    c.delimiters = (field: "", row: "\n")
-    c.delimiters = (field: nil, row: nil)
-    c.delimiters = (field: "hello", row: .standard)
-
-    // TODO: This should not be possible
-    var writerConfiguration = CSVWriter.Configuration()
-//    writerConfiguration.delimiters = (field: .infer, row: "\n")
-
-    // valid
-    writerConfiguration.delimiters = (field: ",", row: "\n")
-
-    // options, choices, possibleValues
-
-    // | -> U+007C, Math Symbol (Sm)
-    // , -> U+002C, Other Punctuation (Po)
-    // ; -> U+003B, Other Punctuation (Po)
-    // : -> U+003A, Other Punctuation (Po)
-    // \t -> U+0009, Control (Cc)
-    // " " -> U+0020, Space Separator (Zs)
-
-    c.delimiters = (field: .infer(options: [",", ";"]), row: "\n")
-    c.delimiters = (field: .infer(options: ["--", ";"]), row: "\n")
-    c.delimiters = (field: .infer, row: "\n")
-    c.delimiters = (field: .infer, row: .init("\n", "\r\n")!)
-    c.delimiters = (field: .infer(options: ["Some long string"]), row: "\n")
 
     // Invalid
-    c.delimiters = (field: "", row: "")
-    c.delimiters = (field: .infer(options: []), row: "\n")
+//    c.delimiters = (field: "", row: "")
+//    c.delimiters = (field: .infer(options: []), row: "\n")
     c.delimiters = (field: .infer, row: .init("\n", "")!)
-    c.delimiters = (field: "--", row: "--")
-    c.delimiters = (field: .infer(options: [",", "--"]), row: "--")
-    c.delimiters = (field: .infer(options: [",", "--"]), row: .infer(options: ["\n", "--"]))
-    c.delimiters = (field: .infer(options: [",", "--"]), row: .init("", "")!)
 
+
+//    c.delimiters = (field: .infer(options: [",", "--"]), row: .init("", "")!)
 
     // Writer
+    //
     // - Configuration
     //   - Delimiters
-
-    // Delimiter
-    // - Pair
+    // - Settings
+    //   - Delimiters
+    //   OR
+    // - Configuration
+    //   - Delimiter
+    //     - Pair
+    // - Settings
+    //   - Delimiter
+    //     - Pair
 
     // Configuration: (field: Delimiter, row: Delimiter) aka CSVWriter.Configuration.Delimiters
     // a) Settings: (field: [Unicode.Scalar], row: [Unicode.Scalar])
@@ -112,10 +129,7 @@ extension ReaderInferenceTests {
     //   - RowDelimiter
     // - Settings
     //   - Delimiters
-
-//    OR
-
-    // Reader
+    // OR
     // - Configuration
     //   - Delimiter
     //     - Pair
@@ -126,11 +140,16 @@ extension ReaderInferenceTests {
     //     - Pair
 
 
-    // - Delimiter
-    //   - Field
-    //   - Row
-
     // Configuration: (field: CSVReader.Configuration.Delimiter.Field, row: CSVReader.Configuration.Delimiter.Row) aka CSVReader.Configuration.Delimiters
     // Settings: (field: Delimiter, row: Set<Delimiter>) aka CSVReader.Settings.Delimiters
   }
 }
+
+// options, choices, possibleValues
+
+// | -> U+007C, Math Symbol (Sm)
+// , -> U+002C, Other Punctuation (Po)
+// ; -> U+003B, Other Punctuation (Po)
+// : -> U+003A, Other Punctuation (Po)
+// \t -> U+0009, Control (Cc)
+// " " -> U+0020, Space Separator (Zs)

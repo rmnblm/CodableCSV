@@ -41,7 +41,7 @@ extension CSVReader {
   /// Private configuration variables for the CSV reader.
   struct Settings {
     /// The unicode scalar delimiters for fields and rows.
-    let delimiters: Delimiters
+    let delimiters: Self.Delimiters
     /// The unicode scalar used as encapsulator and escaping character (when printed two times).
     let escapingScalar: Unicode.Scalar?
     /// The characters set to be trimmed at the beginning and ending of each field.
@@ -63,6 +63,23 @@ extension CSVReader {
       self.trimCharacters = configuration.trimStrategy
       // 4. Optimize the trim characters check (to avoid ObjC overhead).
       self.isTrimNeeded = !self.trimCharacters.isEmpty
+
+      if let escapingScalar = self.escapingScalar {
+        // Ensure field delimiter does not include escaping scalar.
+        guard !self.delimiters.field.contains(escapingScalar)
+        else { throw Error._invalidDelimiters(self.delimiters.field, escapingScalar: escapingScalar) }
+
+        // Ensure row delimiter does not include escaping scalar.
+        guard self.delimiters.row.rowDelimiterSet.allSatisfy({ !$0.contains(escapingScalar) })
+        else { throw Error._invalidDelimiters(self.delimiters.row, escapingScalar: escapingScalar) }
+      }
+
+      // The field delimiter cannot appear as the prefix of any of the row delimiters and vice-versa.
+      guard
+        self.delimiters.row.rowDelimiterSet.allSatisfy({ !delimiters.field.starts(with: $0) }),
+        self.delimiters.row.rowDelimiterSet.allSatisfy({ !$0.starts(with: delimiters.field) })
+      else { throw Error._invalidDelimiters() }
+
       // 5. If there are trim characters, ensure they are not delimiters or the escaping scalar.
       guard self.isTrimNeeded else { return }
       // 6. Ensure trim character set doesn't contain the field delimiter.
@@ -96,9 +113,7 @@ extension CSVReader.Settings {
     /// - parameter row: The exact composition of all possible row delimiters. If it is empty or any of its elements is an empty array, `nil` is returned.
     public init(field: Delimiter, row: RowDelimiterSet) {
       self.field = field
-      //      guard !row.isEmpty, row.allSatisfy({ !$0.isEmpty }) else { return nil }
       self.row = row
-      //      guard self.row.allSatisfy({ $0 != self.field }) else { return nil }
     }
   }
 }
@@ -160,5 +175,25 @@ fileprivate extension CSVReader.Error {
              reason: "The trim characters set includes the escaping scalar.",
              help: "Remove the escaping scalar from the trim characters set.",
              userInfo: ["Escaping scalar": escapingScalar, "Trim characters": trimCharacters])
+  }
+  /// Error raised when the field or/and row delimiters are invalid.
+  static func _invalidDelimiters() -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "The field and/or row delimiters are invalid.",
+             help: "Both delimiters must contain at least a unicode scalar/character and they must be different to each other.")
+  }
+    /// Error raised when the escaping scalar is contained in the field or/and row delimiter.
+  static func _invalidDelimiters(_ delimiter: Delimiter, escapingScalar: Unicode.Scalar) -> CSVError<CSVReader> {
+      CSVError(.invalidConfiguration,
+               reason: "The field and/or row delimiters are invalid.",
+               help: "Both delimiters must contain at least a unicode scalar/character and they must be different to each other.",
+               userInfo: ["Escaping scalar": escapingScalar, "Delimiter": delimiter])
+  }
+  /// Error raised when the escaping scalar is contained in the field or/and row delimiter.
+  static func _invalidDelimiters(_ delimiter: RowDelimiterSet, escapingScalar: Unicode.Scalar) -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "The field and/or row delimiters are invalid.",
+             help: "Both delimiters must contain at least a unicode scalar/character and they must be different to each other.",
+             userInfo: ["Escaping scalar": escapingScalar, "Delimiter": delimiter])
   }
 }
