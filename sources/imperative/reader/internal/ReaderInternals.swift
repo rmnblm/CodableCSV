@@ -128,6 +128,24 @@ extension CSVReader.Settings.Delimiters: Hashable {
   }
 }
 
+public struct RowDelimiterSet: ExpressibleByArrayLiteral, ExpressibleByStringLiteral {
+  let rowDelimiterSet: Set<Delimiter>
+
+  public init(rowDelimiterSet: Set<Delimiter>) {
+    precondition(!rowDelimiterSet.isEmpty)
+    self.rowDelimiterSet = rowDelimiterSet
+  }
+
+  public init(arrayLiteral elements: Delimiter...) {
+    self.init(rowDelimiterSet: Set(elements))
+  }
+
+  public init(stringLiteral value: String) {
+    self.init(rowDelimiterSet: Set([Delimiter(stringLiteral: value)]))
+  }
+}
+
+extension RowDelimiterSet: Hashable {}
 
 fileprivate extension CSVReader.Error {
   /// Error raised when a delimiter (whether row or field) is included in the trim character set.
