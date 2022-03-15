@@ -170,7 +170,9 @@ extension CSVReader {
     }
 
     let detector = DialectDetector(fieldDelimiters: fieldDelimiterOptions, rowDelimiters: rowDelimiterOptions)
-    let detectedDialect = detector.detectDialect(stringScalars: tmp)
+    guard let detectedDialect = detector.detectDialect(stringScalars: tmp) else {
+      throw Error._inferenceFailed()
+    }
 
 
     buffer.preppend(scalars: tmp)
@@ -198,5 +200,11 @@ fileprivate extension CSVReader.Error {
     CSVError(.invalidConfiguration,
              reason: "Row delimiter inference is not yet supported by this library",
              help: "Specify a concrete delimiter or get in contact with the maintainer")
+  }
+  /// Row delimiter inference is not yet implemented.
+  static func _inferenceFailed() -> CSVError<CSVReader> {
+    CSVError(.inferenceFailure,
+             reason: "",
+             help: "")
   }
 }

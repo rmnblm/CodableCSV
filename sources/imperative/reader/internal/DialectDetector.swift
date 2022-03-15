@@ -58,7 +58,7 @@ struct DialectDetector {
   ///
   /// - Parameter stringScalars: The raw CSV data.
   /// - Returns: The detected dialect.
-  func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect {
+  func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect? {
     var maxConsistency = -Double.infinity
     var scores: [Dialect: Double] = [:]
 

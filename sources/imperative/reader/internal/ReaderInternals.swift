@@ -17,8 +17,8 @@ extension CSVReader: Failable {
     case invalidConfiguration = 1
     /// The CSV data is invalid.
     case invalidInput = 2
-//    /// The inferral process to figure out delimiters or header row status was unsuccessful.
-//    case inferenceFailure = 3
+    /// The inferral process to figure out delimiters or header row status was unsuccessful.
+    case inferenceFailure = 3
     /// The input stream failed.
     case streamFailure = 4
   }
@@ -30,7 +30,7 @@ extension CSVReader: Failable {
   public static func errorDescription(for failure: Error) -> String {
     switch failure {
     case .invalidConfiguration: return "Invalid configuration"
-//    case .inferenceFailure: return "Inference failure"
+    case .inferenceFailure: return "Inference failure"
     case .invalidInput: return "Invalid input"
     case .streamFailure: return "Stream failure"
     }
@@ -78,9 +78,6 @@ extension CSVReader {
         throw Error._invalidTrimCharacters(self.trimCharacters, escapingScalar: escapingScalar)
       }
     }
-
-    // TODO: Ensure field and row are mutually exclusive as part of type
-//    typealias Delimiters = (field: Delimiter_, row: RowDelimiterSet)
   }
 }
 
