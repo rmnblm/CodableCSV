@@ -27,7 +27,7 @@
 struct DelimiterInferrer {
   let dialects: [Dialect]
 
-  init(possibleFieldDelimiters: [Delimiter], possibleRowDelimiters: [RowDelimiterSet]) throws {
+  init(possibleFieldDelimiters: [Delimiter], possibleRowDelimiters: [Set<Delimiter>]) throws {
     self.dialects = try Self.makeDialectCandidates(possibleFieldDelimiters, possibleRowDelimiters)
   }
 
@@ -37,10 +37,10 @@ struct DelimiterInferrer {
   /// - returns: The array of delimiter combinations.
   static func makeDialectCandidates(
     _ possibleFieldDelimiters: [Delimiter],
-    _ possibleRowDelimiters: [RowDelimiterSet]
+    _ possibleRowDelimiters: [Set<Delimiter>]
   ) throws -> [Dialect] {
     guard !possibleFieldDelimiters.isEmpty, !possibleRowDelimiters.isEmpty
-    else { throw CSVReader.Error._something() }
+    else { throw CSVReader.Error._emptyDelimiterOptions() }
 
     // 1. Generate all possible combinations of indices.
     // Example: (0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)
@@ -300,4 +300,14 @@ extension DelimiterInferrer {
 //
 //    return (abstraction, errors)
 //  }
+}
+
+fileprivate extension CSVReader.Error {
+  /// Error raised when the delimiter options are empty.
+  /// TODO
+  static func _emptyDelimiterOptions() -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "The delimiter options were empty.",
+             help: "")
+    }
 }

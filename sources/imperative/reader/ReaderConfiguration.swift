@@ -52,9 +52,7 @@ extension Strategy {
 
 extension CSVReader.Configuration {
   public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
-}
 
-extension CSVReader.Configuration {
   public struct FieldDelimiter {
     let inferenceConfiguration: Self.InferenceConfiguration
 
@@ -76,7 +74,40 @@ extension CSVReader.Configuration {
       case infer(options: [Delimiter])
     }
   }
+
+  public struct RowDelimiter {
+    let inferenceConfiguration: Self.InferenceConfiguration
+
+    init(inferenceConfiguration: Self.InferenceConfiguration) {
+      self.inferenceConfiguration = inferenceConfiguration
+    }
+
+    /// Creates one or more possible row delimiters.
+    /// - parameter delimiters:The exact composition of the row delimiters. If any of the `delimiters` is empty, the initializer fails returning `nil`.
+    public init?<S:StringProtocol>(_ delimiters: S...) {
+      let delimiters: [Delimiter] = delimiters.compactMap {
+        guard !$0.isEmpty else { return nil }
+        return Delimiter(scalars: Array($0.unicodeScalars))
+      }
+      guard !delimiters.isEmpty else { return nil }
+      self.inferenceConfiguration = .use(Set(delimiters))
+    }
+
+    /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and a single line feed `\n`.
+    ///
+    /// This delimiter is intended to be used with CSVs where the end of the row may be marked with a CRLF sometimes and other times with LF.
+    public static var standard: Self {
+      self.init("\n", "\r\n")!
+    }
+
+    enum InferenceConfiguration {
+      case use(Set<Delimiter>)
+      case infer(options: [Delimiter])
+    }
+  }
 }
+
+// MARK: - Conformance to InferrableDelimiter
 
 extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
   static var defaultInferenceOptions: [Delimiter] {
@@ -88,41 +119,7 @@ extension CSVReader.Configuration.FieldDelimiter: InferrableDelimiter {
   }
 
   public static func infer(options: [Delimiter]) -> Self {
-    precondition(!options.isEmpty)
     return self.init(inferenceConfiguration: .infer(options: options))
-  }
-}
-
-extension CSVReader.Configuration {
-  public struct RowDelimiter: ExpressibleByStringLiteral {
-    let inferenceConfiguration: Self.InferenceConfiguration
-
-    init(inferenceConfiguration: Self.InferenceConfiguration) {
-      self.inferenceConfiguration = inferenceConfiguration
-    }
-
-    /// Creates one or more possible row delimiters.
-    /// - parameter delimiters:The exact composition of the row delimiters. If any of the `delimiters` is empty, the initializer fails returning `nil`.
-    public init?<S:StringProtocol>(_ delimiters: S...) {
-      let scalars: [Delimiter] = delimiters.compactMap {
-        guard !$0.isEmpty else { return nil }
-        return Delimiter(scalars: Array($0.unicodeScalars))
-      }
-      guard !scalars.isEmpty else { return nil }
-      self.inferenceConfiguration = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
-    }
-
-    /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and a single line feed `\n`.
-    ///
-    /// This delimiter is intended to be used with CSVs where the end of the row may be marked with a CRLF sometimes and other times with LF.
-    public static var standard: Self {
-      self.init("\n", "\r\n")!
-    }
-
-    enum InferenceConfiguration {
-      case use(RowDelimiterSet)
-      case infer(options: [Delimiter])
-    }
   }
 }
 
@@ -134,11 +131,10 @@ extension CSVReader.Configuration.RowDelimiter: InferrableDelimiter {
   init(delimiter: Delimiter) {
     var delimiters = Set<Delimiter>(minimumCapacity: 1)
     delimiters.insert(delimiter)
-    self.inferenceConfiguration = .use(RowDelimiterSet(rowDelimiterSet: delimiters))
+    self.inferenceConfiguration = .use(Set(delimiters))
   }
 
   public static func infer(options: [Delimiter]) -> Self {
-    precondition(!options.isEmpty)
     return self.init(inferenceConfiguration: .infer(options: options))
   }
 }

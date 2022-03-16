@@ -375,11 +375,11 @@ extension ReaderTests {
       // `standard` row delimiter
       { $0.delimiters = (field: ",", row: .standard) },
       // inference using nil literal API
-//      { $0.delimiters = (field: nil, row: nil) },
+      { $0.delimiters = (field: nil, row: nil) },
       // inference using new API
-//      { $0.delimiters = (field: .infer, row: .infer) },
-//      { $0.delimiters = (field: .infer(options: [",", ";"]), row: .infer(options: ["\n", "\r", "\r\n"])) },
-//      { $0.delimiters = (field: .infer(options: ["foo", "bar"]), row: .infer(options: ["baz"])) },
+      { $0.delimiters = (field: .infer, row: .infer) },
+      { $0.delimiters = (field: .infer(options: [",", ";"]), row: .infer(options: ["\n", "\r", "\r\n"])) },
+      { $0.delimiters = (field: .infer(options: ["foo", "bar"]), row: .infer(options: ["baz"])) },
     ]
 
     for (index, configuration) in validConfigurations.enumerated() {

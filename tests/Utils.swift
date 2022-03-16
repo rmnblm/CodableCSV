@@ -25,7 +25,7 @@ extension CSVReader.Configuration.RowDelimiter: CustomStringConvertible {
     guard case .use(let r) = self.inferenceConfiguration
     else { fatalError() }
 
-    return r.rowDelimiterSet.first!.description
+    return r.first!.description
   }
 }
 
@@ -35,7 +35,7 @@ extension CSVReader.Configuration.RowDelimiter {
     case .infer:
       return []
     case let .use(rowDelimiter):
-      return Set(rowDelimiter.rowDelimiterSet.map(\.scalars))
+      return Set(rowDelimiter.map(\.scalars))
     }
   }
 }

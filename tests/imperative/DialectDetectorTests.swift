@@ -7,7 +7,7 @@ final class DialectDetectorTests: XCTestCase {}
 
 extension DialectDetectorTests {
   func test_makeDialectCandidates() throws {
-    let dialects = try DelimiterInferrer.makeDialectCandidates([",", ";"], ["\n", "\r", "\r\n"])
+    let dialects = try DelimiterInferrer.makeDialectCandidates([",", ";"], [["\n"], ["\r"], ["\r\n"]])
     XCTAssertEqual(
       dialects,
       [
@@ -47,7 +47,7 @@ extension DialectDetectorTests {
 //      ),
     ]
 
-    let detector = try DelimiterInferrer(possibleFieldDelimiters: [",", ";", "\t"], possibleRowDelimiters: ["\n"])
+    let detector = try DelimiterInferrer(possibleFieldDelimiters: [",", ";", "\t"], possibleRowDelimiters: [["\n"]])
 
     for (csv, expectedDialect) in dialects {
       let dialect = detector.detectDialect(stringScalars: Array(csv.unicodeScalars))
@@ -123,7 +123,7 @@ extension DialectDetectorTests {
       (",\n,", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
       (",foo\n,bar", [.cell, .fieldDelimiter, .cell, .rowDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = try DelimiterInferrer.Dialect(field: ",", row: "\n")
+    let dialect = try DelimiterInferrer.Dialect(field: ",", row: ["\n"])
 
     for (csv, expected) in abstractions {
       let abstraction = DelimiterInferrer.makeAbstraction(stringScalars: Array(csv.unicodeScalars), dialect: dialect)
@@ -137,7 +137,7 @@ extension DialectDetectorTests {
       (#"  "foo ""quoted"" \n ,bar",baz  "#, [.cell, .fieldDelimiter, .cell]),
       (#"  a,"bc""d""e""f""a",\n         "#, [.cell, .fieldDelimiter, .cell, .fieldDelimiter, .cell]),
     ]
-    let dialect = try DelimiterInferrer.Dialect(field: ",", row: "\n")
+    let dialect = try DelimiterInferrer.Dialect(field: ",", row: ["\n"])
     for (csv, expected) in escapingAbstractions {
       let strippedCSV = csv.trimmingCharacters(in: .whitespaces)
       let abstraction = DelimiterInferrer.makeAbstraction(stringScalars: Array(strippedCSV.unicodeScalars), dialect: dialect)
@@ -146,7 +146,7 @@ extension DialectDetectorTests {
   }
 
   func test_makeAbstraction_HandlesInvalidEscaping() throws {
-    let dialect = try DelimiterInferrer.Dialect(field: ",", row: "\n")
+    let dialect = try DelimiterInferrer.Dialect(field: ",", row: ["\n"])
     let malformedCSVs: [(String, [DelimiterInferrer.Abstraction])] = [
       // escaping
       (#"  foo,x"bar"  "#, [.cell, .fieldDelimiter, .cell]),

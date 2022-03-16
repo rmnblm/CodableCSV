@@ -17,11 +17,11 @@ extension CSVReader.Settings.Delimiters {
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - returns: A closure which given the targeted unicode character and the buffer and iterrator, returns a Boolean indicating whether there is a row delimiter.
   func makeRowMatcher(buffer: CSVReader.ScalarBuffer, decoder: @escaping CSVReader.ScalarDecoder) -> Self.Checker {
-    guard self.row.rowDelimiterSet.count > 1 else {
-      return Self._makeMatcher(delimiter: self.row.rowDelimiterSet.first!.scalars, buffer: buffer, decoder: decoder)
+    guard self.row.count > 1 else {
+      return Self._makeMatcher(delimiter: self.row.first!.scalars, buffer: buffer, decoder: decoder)
     }
 
-    let delimiters = self.row.rowDelimiterSet.sorted { $0.count < $1.count }
+    let delimiters = self.row.sorted { $0.count < $1.count }
     let maxScalars = delimiters.last!.count
 
     // For optimization sake, a delimiter proofer is built for a single value scalar.
@@ -148,43 +148,28 @@ extension CSVReader.Settings.Delimiters {
     decoder: CSVReader.ScalarDecoder,
     buffer: CSVReader.ScalarBuffer
   ) throws -> Self {
-    let fieldDelimiterOptions: [Delimiter]
-    let rowDelimiterOptions: [RowDelimiterSet]
-
-    // ensure the options are not empty
-    // ensure the options are mutually exclusive
-
-    switch delimiters.field.inferenceConfiguration {
-    case .use(let fieldDelimiter):
-      break
-    case .infer(let options):
-      guard !options.isEmpty
-      else { throw CSVReader.Error._emptyInferenceOptions() }
-
-      //      options.
-    }
-
-    switch delimiters.row.inferenceConfiguration {
-    case .use(let rowDelimiterSet):
-      break
-    case .infer(let options):
-      guard !options.isEmpty
-      else { throw CSVReader.Error._emptyInferenceOptions() }
-    }
+    let possibleFieldDelimiters: [Delimiter]
+    let possibleRowDelimiters: [Set<Delimiter>]
 
     switch (delimiters.field.inferenceConfiguration, delimiters.row.inferenceConfiguration) {
-    case (.use(let fieldDelimiter), .use(let rowDelimiterSet)):
-      return try Self(field: fieldDelimiter, row: rowDelimiterSet)
+    case let (.use(fieldDelimiter), .use(rowDelimiter)):
+      return try Self(field: fieldDelimiter, row: rowDelimiter)
 
-    case (.infer(let options), .use(let rowDelimiterSet)):
-      guard !options.isEmpty
-      else { throw CSVReader.Error._emptyInferenceOptions() }
+    case let (.infer(fieldDelimiterOptions), .use(rowDelimiter)):
+      possibleFieldDelimiters = fieldDelimiterOptions
+      possibleRowDelimiters = [rowDelimiter]
 
-      fieldDelimiterOptions = options
-      rowDelimiterOptions = [rowDelimiterSet]
+    case let (.use(fieldDelimiter), .infer(rowDelimiterOptions)):
+      possibleFieldDelimiters = [fieldDelimiter]
+      possibleRowDelimiters = [Set(rowDelimiterOptions)]
 
-    default: throw CSVReader.Error._unsupportedInference()
+    case let (.infer(fieldDelimiterOptions), .infer(rowDelimiterOptions)):
+      possibleFieldDelimiters = fieldDelimiterOptions
+      possibleRowDelimiters = [Set(rowDelimiterOptions)]
     }
+
+    guard !possibleFieldDelimiters.isEmpty, !possibleRowDelimiters.isEmpty
+    else { throw CSVReader.Error._emptyInferenceOptions() }
 
     let sampleLength = 50
     var tmp: [UnicodeScalar] = []
@@ -194,7 +179,7 @@ extension CSVReader.Settings.Delimiters {
       tmp.append(scalar)
     }
 
-    let detector = try DelimiterInferrer(possibleFieldDelimiters: fieldDelimiterOptions, possibleRowDelimiters: rowDelimiterOptions)
+    let detector = try DelimiterInferrer(possibleFieldDelimiters: possibleFieldDelimiters, possibleRowDelimiters: possibleRowDelimiters)
     guard let detectedDialect = detector.detectDialect(stringScalars: tmp) else {
       throw CSVReader.Error._inferenceFailed()
     }
