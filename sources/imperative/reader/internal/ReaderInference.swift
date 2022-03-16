@@ -137,26 +137,31 @@ extension CSVReader.Settings.Delimiters {
   }
 }
 
-extension CSVReader {
+extension CSVReader.Settings.Delimiters {
   /// Tries to infer both the field and row delimiter from the raw data.
-  /// - parameter field: The field delimiter specified by the user.
-  /// - parameter row: The row delimiter specified by the user.
+  /// - parameter delimiters: The delimiter configuration specified by the user.
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
   /// - throws: `CSVError<CSVReader>` exclusively.
-  /// - todo: Implement the field and row inferences.
-  static func infer(delimiters: Configuration.Delimiters, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Settings.Delimiters {
+  static func infer(
+    from delimiters: CSVReader.Configuration.Delimiters,
+    decoder: CSVReader.ScalarDecoder,
+    buffer: CSVReader.ScalarBuffer
+  ) throws -> Self {
     let fieldDelimiterOptions: [Delimiter]
     let rowDelimiterOptions: [RowDelimiterSet]
+
+    // ensure the options are not empty
+    // ensure the options are mutually exclusive
 
     switch delimiters.field.inferenceConfiguration {
     case .use(let fieldDelimiter):
       break
     case .infer(let options):
       guard !options.isEmpty
-      else { throw Error._emptyInferenceOptions() }
+      else { throw CSVReader.Error._emptyInferenceOptions() }
 
-//      options.
+      //      options.
     }
 
     switch delimiters.row.inferenceConfiguration {
@@ -164,21 +169,21 @@ extension CSVReader {
       break
     case .infer(let options):
       guard !options.isEmpty
-      else { throw Error._emptyInferenceOptions() }
+      else { throw CSVReader.Error._emptyInferenceOptions() }
     }
 
     switch (delimiters.field.inferenceConfiguration, delimiters.row.inferenceConfiguration) {
     case (.use(let fieldDelimiter), .use(let rowDelimiterSet)):
-      return Settings.Delimiters(field: fieldDelimiter, row: rowDelimiterSet)
+      return try Self(field: fieldDelimiter, row: rowDelimiterSet)
 
     case (.infer(let options), .use(let rowDelimiterSet)):
       guard !options.isEmpty
-      else { throw Error._emptyInferenceOptions() }
+      else { throw CSVReader.Error._emptyInferenceOptions() }
 
       fieldDelimiterOptions = options
       rowDelimiterOptions = [rowDelimiterSet]
 
-    default: throw Error._unsupportedInference()
+    default: throw CSVReader.Error._unsupportedInference()
     }
 
     let sampleLength = 50
@@ -189,20 +194,14 @@ extension CSVReader {
       tmp.append(scalar)
     }
 
-    let detector = DialectDetector(fieldDelimiters: fieldDelimiterOptions, rowDelimiters: rowDelimiterOptions)
+    let detector = try DelimiterInferrer(possibleFieldDelimiters: fieldDelimiterOptions, possibleRowDelimiters: rowDelimiterOptions)
     guard let detectedDialect = detector.detectDialect(stringScalars: tmp) else {
-      throw Error._inferenceFailed()
+      throw CSVReader.Error._inferenceFailed()
     }
-
 
     buffer.preppend(scalars: tmp)
 
-//    guard let delimiters = CSVReader.Configuration.Delimiter.Scalars(field: fieldDelimiterScalars, row: rowDelimiterScalars) else {
-//      throw Error._invalidDelimiters(fieldScalars: fieldDelimiterScalars, rowScalars: rowDelimiterScalars)
-//    }
-
-    return detectedDialect.delimiters
-//    return (field: detectedDialect.delimiters.field, row: detectedDialect.delimiters.row)
+    return detectedDialect
   }
 }
 

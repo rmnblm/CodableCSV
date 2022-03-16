@@ -112,7 +112,7 @@ extension CSVReader.Configuration {
       self.inferenceConfiguration = .use(RowDelimiterSet(rowDelimiterSet: Set(scalars)))
     }
 
-    /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and s single line feed `\n`.
+    /// Specifies two row delimiters: CR (Carriage Return) LF (Line Feed) `\r\n` and a single line feed `\n`.
     ///
     /// This delimiter is intended to be used with CSVs where the end of the row may be marked with a CRLF sometimes and other times with LF.
     public static var standard: Self {

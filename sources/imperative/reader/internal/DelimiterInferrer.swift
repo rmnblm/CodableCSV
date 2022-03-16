@@ -23,32 +23,43 @@
  SOFTWARE.
  */
 
-/// Provides the means for detecting a CSV file's dialect
-struct DialectDetector {
+/// Provides the means for detecting a CSV file's dialect.
+struct DelimiterInferrer {
   let dialects: [Dialect]
 
-  init(fieldDelimiters: [Delimiter], rowDelimiters: [RowDelimiterSet]) {
-    self.dialects = Self.makeDialects(fieldDelimiters: fieldDelimiters, rowDelimiters: rowDelimiters)
+  init(possibleFieldDelimiters: [Delimiter], possibleRowDelimiters: [RowDelimiterSet]) throws {
+    self.dialects = try Self.makeDialectCandidates(possibleFieldDelimiters, possibleRowDelimiters)
   }
 
-  static func makeDialects(fieldDelimiters: [Delimiter], rowDelimiters: [RowDelimiterSet]) -> [Dialect] {
-    let indexPairs = fieldDelimiters.indices.flatMap { fieldIndex in
-      rowDelimiters.indices.map { rowIndex in
+  /// Generates a list of all possible delimiter combinations, maintaining the
+  /// - parameter possibleFieldDelimiters: An array of possible field delimiters. Must not be empty.
+  /// - parameter possibleRowDelimiters: An array of possible row delimiters. Must not be empty.
+  /// - returns: The array of delimiter combinations.
+  static func makeDialectCandidates(
+    _ possibleFieldDelimiters: [Delimiter],
+    _ possibleRowDelimiters: [RowDelimiterSet]
+  ) throws -> [Dialect] {
+    guard !possibleFieldDelimiters.isEmpty, !possibleRowDelimiters.isEmpty
+    else { throw CSVReader.Error._something() }
+
+    // 1. Generate all possible combinations of indices.
+    // Example: (0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)
+    let indexPairs = possibleFieldDelimiters.indices.flatMap { fieldIndex in
+      possibleRowDelimiters.indices.map { rowIndex in
         (fieldIndex: fieldIndex, rowIndex: rowIndex)
       }
     }
-
+    // 2. Sort index pairs by their sum, i.e. from most likely pairs to least likely pairs.
+    // Example: (0, 0), (0, 1), (1, 0), (0, 2), (1, 1), (1, 2)
     let sortedIndexPairs = indexPairs.sorted { lhs, rhs in
       lhs.fieldIndex + lhs.rowIndex < rhs.fieldIndex + rhs.rowIndex
     }
-
+    // 3. Use the indices to access the actual delimiters.
     let delimiterCombinations = sortedIndexPairs.map {
-      (fieldDelimiters[$0.fieldIndex], rowDelimiters[$0.rowIndex])
+      (possibleFieldDelimiters[$0.fieldIndex], possibleRowDelimiters[$0.rowIndex])
     }
-
-    return delimiterCombinations
-      .compactMap(CSVReader.Settings.Delimiters.init(field:row:))
-      .map(Dialect.init(delimiters:))
+    // 4. Return only valid candidates.
+    return try delimiterCombinations.map(Dialect.init(field:row:))
   }
 
   /// Detects the dialect used in the provided CSV file.
@@ -111,26 +122,12 @@ struct DialectDetector {
     return score
   }
 
-  /// Describes a CSV file's formatting.
-  struct Dialect: Hashable {
-    let delimiters: CSVReader.Settings.Delimiters
-//    let fieldDelimiter: [Unicode.Scalar]
-//    let rowDelimiter: Unicode.Scalar = "\n"
-//    let escapeCharacter: Unicode.Scalar = "\""
-
-    init(delimiters: CSVReader.Settings.Delimiters) {
-      self.delimiters = delimiters
-    }
-
-    init(fieldDelimiter: Delimiter, rowDelimiter: RowDelimiterSet = .init(rowDelimiterSet: [Delimiter(stringLiteral: "\n")])) {
-      self.delimiters = .init(field: fieldDelimiter, row: rowDelimiter)
-    }
-  }
+  typealias Dialect = CSVReader.Settings.Delimiters
 }
 
 // MARK: -
 
-extension DialectDetector {
+extension DelimiterInferrer {
   /// An abstracted piece of CSV data
   enum Abstraction: Character, Hashable {
     case cell = "C", fieldDelimiter = "D", rowDelimiter = "R"
@@ -157,7 +154,7 @@ extension DialectDetector {
 
   static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> [Abstraction]? {
     var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: .init(inferenceConfiguration: .use(dialect.delimiters.field)), row: .init(inferenceConfiguration: .use(dialect.delimiters.row)))
+    configuration.delimiters = (field: .init(inferenceConfiguration: .use(dialect.field)), row: .init(inferenceConfiguration: .use(dialect.row)))
 
     let iter = stringScalars.makeIterator()
     let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)

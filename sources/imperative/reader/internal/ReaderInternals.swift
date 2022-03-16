@@ -56,7 +56,8 @@ extension CSVReader {
     /// - throws: `CSVError<CSVReader>` exclusively.
     init(configuration: Configuration, decoder: ScalarDecoder, buffer: ScalarBuffer) throws {
       // 1. Figure out the field and row delimiters.
-      self.delimiters = try CSVReader.infer(delimiters: configuration.delimiters, decoder: decoder, buffer: buffer)
+//      self.delimiters = try CSVReader.infer(delimiters: configuration.delimiters, decoder: decoder, buffer: buffer)
+      self.delimiters = try Settings.Delimiters.infer(from: configuration.delimiters, decoder: decoder, buffer: buffer)
       // 2. Set the escaping scalar.
       self.escapingScalar = configuration.escapingStrategy.scalar
       // 3. Set the trim characters set.
@@ -111,7 +112,13 @@ extension CSVReader.Settings {
     /// Designated initializer checking that the delimiters aren't empty and the field delimiter is not included in the row delimiter.
     /// - parameter field: The exact composition of the field delimiter. If empty, `nil` is returned.
     /// - parameter row: The exact composition of all possible row delimiters. If it is empty or any of its elements is an empty array, `nil` is returned.
-    public init(field: Delimiter, row: RowDelimiterSet) {
+    public init(field: Delimiter, row: RowDelimiterSet) throws {
+      // The field delimiter cannot appear as the prefix of any of the row delimiters and vice-versa.
+      guard
+        row.rowDelimiterSet.allSatisfy({ !field.starts(with: $0) }),
+        row.rowDelimiterSet.allSatisfy({ !$0.starts(with: field) })
+      else { throw CSVReader.Error._invalidDelimiters() }
+
       self.field = field
       self.row = row
     }
