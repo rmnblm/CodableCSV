@@ -50,6 +50,8 @@ extension Strategy {
   }
 }
 
+// MARK: - Delimiters
+
 extension CSVReader.Configuration {
   public typealias Delimiters = (field: Self.FieldDelimiter, row: Self.RowDelimiter)
 
@@ -67,7 +69,7 @@ extension CSVReader.Configuration {
   }
 }
 
-// MARK: - FieldDelimiter
+// MARK: FieldDelimiter extensions
 
 extension CSVReader.Configuration.FieldDelimiter {
   /// The field delimiter is represented by the given `String`-like type.
@@ -96,7 +98,7 @@ extension CSVReader.Configuration.FieldDelimiter: Inferrable {
   }
 }
 
-// MARK: - RowDelimiter
+// MARK: RowDelimiter extensions
 
 extension CSVReader.Configuration.RowDelimiter {
   /// Creates one or more possible row delimiters.
