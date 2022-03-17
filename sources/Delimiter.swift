@@ -6,7 +6,7 @@ public struct Delimiter: Hashable, ExpressibleByStringLiteral, CustomStringConve
   /// Creates a delimiter from the given scalars.
   /// - parameter scalars: An array of Unicode scalars representing the delimiter. Must not be empty.
   init(scalars: [Unicode.Scalar]) {
-    precondition(!scalars.isEmpty)
+    precondition(!scalars.isEmpty, "A delimiter must consist of at least one Unicode scalar.")
     self.scalars = scalars
   }
 
@@ -35,7 +35,7 @@ public struct Delimiter: Hashable, ExpressibleByStringLiteral, CustomStringConve
   }
 }
 
-// MARK: - Conformance to Collection
+// MARK: Conformance to Collection
 
 extension Delimiter: Collection {
   public typealias Element = Unicode.Scalar
@@ -58,25 +58,23 @@ extension Delimiter: Collection {
   }
 }
 
-// MARK: - InferrableDelimiter
+// MARK: - Inferrable
 
-/// A delimiter which supports inference.
-protocol InferrableDelimiter: ExpressibleByNilLiteral, ExpressibleByStringLiteral {
-  /// A default array of possible delimiters.
-  static var defaultInferenceOptions: [Delimiter] { get }
+public protocol Inferrable: ExpressibleByNilLiteral {
+  /// The type of the inference options.
+  associatedtype Option
 
-  /// Determine the delimiter by inferring it from the given array of options.
-  /// - parameter options: An array of possible delimiters. Must not be empty.
-  /// - returns: An instance of `Self` initialized for inference.
-  static func infer(options: [Delimiter]) -> Self
+  /// A default list of possible inference options.
+  static var defaultInferenceOptions: [Option] { get }
 
-  /// Creates an inferrable delimiter from the given delimiter.
-  /// - parameter delimiter: The chosen delimiter.
-  init(delimiter: Delimiter)
+  /// Pick the right configuration value from a list of possible options by inferring it from the CSV data.
+  /// - parameter options: A list of the possible options. Must not be empty.
+  /// - returns: An instance of `Self`, initialized for inference.
+  static func infer(options: [Option]) -> Self
 }
 
-extension InferrableDelimiter {
-  /// An instance of `Self`, initialized for inference using the list of default delimiter options.
+extension Inferrable {
+  /// An instance of `Self`, initialized for inference using the default inference options.
   public static var infer: Self {
     Self.infer(options: Self.defaultInferenceOptions)
   }
@@ -84,15 +82,23 @@ extension InferrableDelimiter {
 
 // MARK: Default conformance to ExpressibleByNilLiteral
 
-extension InferrableDelimiter {
+extension Inferrable {
   public init(nilLiteral: ()) {
     self = .infer
   }
 }
 
+// MARK: - DelimiterProtocol
+
+protocol DelimiterProtocol: ExpressibleByStringLiteral {
+  /// Creates an instance from the given delimiter.
+  /// - parameter delimiter: The chosen delimiter.
+  init(delimiter: Delimiter)
+}
+
 // MARK: Default conformance to ExpressibleByStringLiteral
 
-extension InferrableDelimiter {
+extension DelimiterProtocol {
   public init(unicodeScalarLiteral value: Unicode.Scalar) {
     self.init(delimiter: .init(unicodeScalarLiteral: value))
   }

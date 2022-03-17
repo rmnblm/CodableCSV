@@ -62,7 +62,7 @@ extension Optional {
   }
 }
 
-extension Array where Element:Hashable {
+extension Array where Element: Hashable {
   /// Creates a lookup dictionary for the receiving row.
   ///
   /// In case of two array element with the same hash value, the closure is executed and the generated error is thrown.
@@ -77,7 +77,7 @@ extension Array where Element:Hashable {
   }
 }
 
-extension Sequence where Element : Hashable {
+extension Sequence where Element: Hashable {
 	/// Creates a dictionary mapping elements of the sequence to the number of times they occur in the sequence.
 	/// - returns: The dictionary of occurence counts.
 	func occurenceCounts() -> [Element: Int] {
