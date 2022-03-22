@@ -21,37 +21,61 @@ final class ReaderInferenceTests: XCTestCase {
     /// - parameter sample:
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
-      let (f, r) = (delimiters.field.description, delimiters.row.description)
+    static func toCSV(_ sample: [[String]], delimiters: (field: Delimiter, row: Delimiter)) -> String {
+      func toString(_ delimiter: Delimiter) -> String {
+        String(String.UnicodeScalarView(delimiter.scalars))
+      }
+
+      let (f, r) = (toString(delimiters.field), toString(delimiters.row))
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
+    }
+
+    static func bufferAndDecoder(from string: String) -> (CSVReader.ScalarBuffer, CSVReader.ScalarDecoder) {
+      let scalars = Array(string.unicodeScalars)
+      let iter = scalars.makeIterator()
+      let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
+      let decoder = CSVReader.makeDecoder(from: iter)
+      return (buffer, decoder)
     }
   }
 }
 
 extension ReaderInferenceTests {
-  func testInference() throws {
-    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "|", "\t"]
-
-    var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: "", row: "\n")
+  func testReaderInference() throws {
+    let fieldDelimiters: [Delimiter] = [",", ";", "\t"]
+    let rowDelimiters: [Delimiter] = ["\n", "\r\n", "\r"]
 
     for fieldDelimiter in fieldDelimiters {
-      let testString = _TestData.toCSV(_TestData.content, delimiters: (fieldDelimiter, "\n"))
-      let result = try CSVReader.decode(input: testString, configuration: configuration)
-      XCTAssertEqual(result.rows, _TestData.content, "Delimiter: \(fieldDelimiter)")
+      for rowDelimiter in rowDelimiters {
+        let testString = _TestData.toCSV(_TestData.content, delimiters: (fieldDelimiter, rowDelimiter))
+        let result = try CSVReader.decode(input: testString) {
+          $0.delimiters = (field: .infer, row: .infer(options: ["\n", "\r", "\r\n"]))
+        }
+        XCTAssertEqual(result.rows, _TestData.content, "Field: \(fieldDelimiter), Row: \(rowDelimiter)".debugDescription)
+      }
     }
   }
 
-  func testInference_longRows() throws {
-    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "|", "\t"]
+  func test_Settings_Delimiters_infer() throws {
+    let fieldDelimiters: [Delimiter] = ["-", "--", "---"]
+    let rowDelimiters: [Delimiter] = ["\n"]
 
     var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: nil, row: "\n")
+    configuration.delimiters = (field: .infer(options: ["-","--", "---"]), row: .infer)
+
+    let veryLongContent = Array(repeating: _TestData.longContent, count: 1).flatMap { $0 }
 
     for fieldDelimiter in fieldDelimiters {
-      let testString = _TestData.toCSV(_TestData.longContent, delimiters: (fieldDelimiter, "\n"))
-      let result = try CSVReader.decode(input: testString, configuration: configuration)
-      XCTAssertEqual(result.rows, _TestData.longContent)
+      for rowDelimiter in rowDelimiters {
+        let testString = _TestData.toCSV(veryLongContent, delimiters: (fieldDelimiter, rowDelimiter))
+
+        let (buffer, decoder) = Self._TestData.bufferAndDecoder(from: testString)
+
+        let delimiters = try CSVReader.Settings.Delimiters.infer(from: configuration, decoder: decoder, buffer: buffer)
+        XCTAssertEqual(delimiters, try! CSVReader.Settings.Delimiters(field: fieldDelimiter, row: rowDelimiter))
+        //      let result = try CSVReader.decode(input: testString, configuration: configuration)
+        //      XCTAssertEqual(result.rows, veryLongContent)
+      }
     }
   }
 

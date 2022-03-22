@@ -144,14 +144,14 @@ extension CSVReader.Settings.Delimiters {
   /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
   /// - throws: `CSVError<CSVReader>` exclusively.
   static func infer(
-    from delimiters: CSVReader.Configuration.Delimiters,
-    decoder: CSVReader.ScalarDecoder,
+    from configuration: CSVReader.Configuration,
+    decoder: @escaping CSVReader.ScalarDecoder,
     buffer: CSVReader.ScalarBuffer
   ) throws -> Self {
     let possibleFieldDelimiters: [Delimiter]
     let possibleRowDelimiters: [Set<Delimiter>]
 
-    switch (delimiters.field.inferenceConfiguration, delimiters.row.inferenceConfiguration) {
+    switch (configuration.delimiters.field.inferenceConfiguration, configuration.delimiters.row.inferenceConfiguration) {
     case let (.use(fieldDelimiter), .use(rowDelimiter)):
       return try Self(field: fieldDelimiter, row: rowDelimiter)
 
@@ -161,30 +161,34 @@ extension CSVReader.Settings.Delimiters {
 
     case let (.use(fieldDelimiter), .infer(rowDelimiterOptions)):
       possibleFieldDelimiters = [fieldDelimiter]
-      possibleRowDelimiters = [Set(rowDelimiterOptions)]
+      possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
 
     case let (.infer(fieldDelimiterOptions), .infer(rowDelimiterOptions)):
       possibleFieldDelimiters = fieldDelimiterOptions
-      possibleRowDelimiters = [Set(rowDelimiterOptions)]
+      possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
     }
 
     guard !possibleFieldDelimiters.isEmpty, !possibleRowDelimiters.isEmpty
     else { throw CSVReader.Error._emptyInferenceOptions() }
 
-    let sampleLength = 50
-    var tmp: [UnicodeScalar] = []
-    tmp.reserveCapacity(sampleLength)
-    while tmp.count < sampleLength {
+    let sampleLength = 500
+    var scalars: [UnicodeScalar] = []
+    scalars.reserveCapacity(sampleLength)
+    while scalars.count < sampleLength {
       guard let scalar = try buffer.next() ?? decoder() else { break }
-      tmp.append(scalar)
+      scalars.append(scalar)
     }
 
-    let detector = try DelimiterInferrer(possibleFieldDelimiters: possibleFieldDelimiters, possibleRowDelimiters: possibleRowDelimiters)
-    guard let detectedDialect = detector.detectDialect(stringScalars: tmp) else {
+    let detector = try DelimiterInferrer(
+      configuration: configuration,
+      possibleFieldDelimiters: possibleFieldDelimiters,
+      possibleRowDelimiters: possibleRowDelimiters
+    )
+    guard let detectedDialect = detector.detectDialect(from: scalars) else {
       throw CSVReader.Error._inferenceFailed()
     }
 
-    buffer.preppend(scalars: tmp)
+    buffer.preppend(scalars: scalars)
 
     return detectedDialect
   }

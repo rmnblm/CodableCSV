@@ -1,6 +1,8 @@
 // Parts of the code in this file are adapted from the CleverCSV Python library.
 // See: https://github.com/alan-turing-institute/CleverCSV
 
+import Foundation
+
 /*
  Copyright (c) 2018 The Alan Turing Institute
 
@@ -25,17 +27,20 @@
 
 /// Provides the means for detecting a CSV file's dialect.
 struct DelimiterInferrer {
+  // TODO: Should this be CSVReader.Settings?
+  let configuration: CSVReader.Configuration
   let dialects: [Dialect]
 
-  init(possibleFieldDelimiters: [Delimiter], possibleRowDelimiters: [Set<Delimiter>]) throws {
-    self.dialects = try Self.makeDialectCandidates(possibleFieldDelimiters, possibleRowDelimiters)
+  init(configuration: CSVReader.Configuration) throws {
+    self.configuration = configuration
+    self.dialects = try Self.produceDialectCandidates(possibleFieldDelimiters, possibleRowDelimiters)
   }
 
   /// Generates a list of all possible delimiter combinations, maintaining the
   /// - parameter possibleFieldDelimiters: An array of possible field delimiters. Must not be empty.
   /// - parameter possibleRowDelimiters: An array of possible row delimiters. Must not be empty.
   /// - returns: The array of delimiter combinations.
-  static func makeDialectCandidates(
+  static func produceDialectCandidates(
     _ possibleFieldDelimiters: [Delimiter],
     _ possibleRowDelimiters: [Set<Delimiter>]
   ) throws -> [Dialect] {
@@ -59,7 +64,7 @@ struct DelimiterInferrer {
       (possibleFieldDelimiters[$0.fieldIndex], possibleRowDelimiters[$0.rowIndex])
     }
     // 4. Return only valid candidates.
-    return try delimiterCombinations.map(Dialect.init(field:row:))
+    return try delimiterCombinations.map(Dialect.init)
   }
 
   /// Detects the dialect used in the provided CSV file.
@@ -69,17 +74,14 @@ struct DelimiterInferrer {
   ///
   /// - Parameter stringScalars: The raw CSV data.
   /// - Returns: The detected dialect.
-  func detectDialect(stringScalars: [UnicodeScalar]) -> Dialect? {
+  func detectDialect(from scalars: [Unicode.Scalar]) -> Dialect? {
     var maxConsistency = -Double.infinity
     var scores: [Dialect: Double] = [:]
 
     for dialect in self.dialects {
-      let patternScore = Self.calculatePatternScore(stringScalars: stringScalars, dialect: dialect)
+      let abstraction = self.makeAbstraction(from: scalars, using: dialect)
+      let patternScore = self.calculatePatternScore(abstraction: abstraction)
 
-      if patternScore < maxConsistency {
-        // Skip the computation of the type score for dialects with a low pattern score.
-        continue
-      }
       // TODO: Calculate type score?
       let typeScore = 1.0
       let consistencyScore = patternScore * typeScore
@@ -87,7 +89,41 @@ struct DelimiterInferrer {
       scores[dialect] = consistencyScore
     }
 
-    let best = scores.max { a, b in a.value < b.value }
+    // TODO: Implement tie breaking rules
+
+    let best = scores.max { a, b in
+//      let rowCount = \Dictionary<DelimiterInferrer.Dialect, Double>.Element.key.row.count
+//      a[keyPath: rowCount] < b[keyPath: rowCount]
+//      let score = \Dictionary<DelimiterInferrer.Dialect, Double>.Element.value
+//      a[keyPath: score] < b[keyPath: score]
+
+      // pick the dialect with the larger score
+//      a.value < b.value
+      // pick the dialect with the smaller set of row delimiters
+//      || a.key.row.count > b.key.row.count
+      // pick the dialect with the longest field and row delimiters
+//      || a.key.field.count + a.key.row.map(\.count).reduce(0, +) < b.key.field.count + b.key.row.map(\.count).reduce(0, +)
+
+      if a.value < b.value {
+        // pick the dialect with the larger score
+        return true
+      } else if a.value == b.value {
+        if a.key.row.count > b.key.row.count {
+          // pick the dialect with the smaller set of row delimiters
+          return true
+        } else if a.key.row.count == b.key.row.count {
+          let aScore = a.key.field.count + a.key.row.map(\.count).reduce(0, +)
+          let bScore = b.key.field.count + b.key.row.map(\.count).reduce(0, +)
+
+          if aScore < bScore {
+            // pick the dialect with the longest field and row delimiters
+            return true
+          }
+        }
+      }
+
+      return false
+    }
 
     return best?.key
   }
@@ -99,14 +135,10 @@ struct DelimiterInferrer {
   /// The correct dialect is expected to produce many rows of the same pattern
   /// The pattern score favors row patterns that occur often, that are long and favors having fewer row patterns.
   ///
-  /// - parameter stringScalars: The raw CSV data.
-  /// - parameter dialect: A dialect for which to calculate the score.
-  /// - returns: The calculated pattern score for the given dialect.
-  static func calculatePatternScore(stringScalars: [UnicodeScalar], dialect: Dialect) -> Double {
-    guard let abstraction = Self.makeAbstraction(stringScalars: stringScalars, dialect: dialect)
-    else { return 0.0 }
-
-#warning("TODO: Break ties based on generated errors")
+  /// - parameter abstraction: An abstraction of the CSV data.
+  /// - returns: The calculated pattern score for the given abstraction.
+  func calculatePatternScore(abstraction: [Abstraction]?) -> Double {
+    guard let abstraction = abstraction, !abstraction.isEmpty else { return 0.0 }
 
     let rowPatternCounts: [ArraySlice<Abstraction>: Int] = abstraction
       .split(separator: .rowDelimiter)
@@ -152,21 +184,24 @@ extension DelimiterInferrer {
     }
   }
 
-  static func makeAbstraction(stringScalars: [Unicode.Scalar], dialect: Dialect) -> [Abstraction]? {
-    var configuration = CSVReader.Configuration()
+  func makeAbstraction(from scalars: [Unicode.Scalar], using dialect: Dialect) -> [Abstraction]? {
+    var configuration = self.configuration
     configuration.delimiters = (field: .init(inferenceConfiguration: .use(dialect.field)), row: .init(inferenceConfiguration: .use(dialect.row)))
 
-    let iter = stringScalars.makeIterator()
-    let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
-    let decoder = CSVReader.makeDecoder(from: iter)
-
-    guard let reader = try? CSVReader(configuration: configuration, buffer: buffer, decoder: decoder)
+    guard let reader = try? CSVReader(input: String(String.UnicodeScalarView(scalars)), configuration: configuration)
     else { return nil }
 
+//    guard let reader = try? CSVReader(configuration: configuration, buffer: buffer, decoder: decoder)
+//    else { return nil }
+
     var abstraction: [[Abstraction]] = []
-    while let row = try? reader.readRow() {
-      let rowAbstraction: [Abstraction] = row.flatMap { _ in [.cell, .fieldDelimiter] }.dropLast()
-      abstraction.append(rowAbstraction)
+    do {
+      while let row = try reader.readRow() {
+        let rowAbstraction: [Abstraction] = row.flatMap { _ in [.cell, .fieldDelimiter] }.dropLast()
+        abstraction.append(rowAbstraction)
+      }
+    } catch {
+      return nil
     }
 
     return Array(abstraction.joined(separator: [Abstraction.rowDelimiter]))

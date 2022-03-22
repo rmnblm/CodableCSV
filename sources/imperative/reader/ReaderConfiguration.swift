@@ -75,9 +75,7 @@ extension CSVReader.Configuration.FieldDelimiter {
   /// The field delimiter is represented by the given `String`-like type.
   /// - parameter delimiter: The exact composition of the field delimiter. If empty, the initializer fails returning `nil`.
   public init?<S:StringProtocol>(_ delimiter: S) {
-    guard let fieldDelimiter = Delimiter.init(delimiter)
-    else { return nil }
-
+    guard let fieldDelimiter = Delimiter.init(delimiter) else { return nil }
     self.inferenceConfiguration = .use(fieldDelimiter)
   }
 }

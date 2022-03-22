@@ -54,9 +54,9 @@ extension CSVReader {
     /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
     /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
     /// - throws: `CSVError<CSVReader>` exclusively.
-    init(configuration: Configuration, decoder: ScalarDecoder, buffer: ScalarBuffer) throws {
+    init(configuration: Configuration, decoder: @escaping ScalarDecoder, buffer: ScalarBuffer) throws {
       // 1. Figure out the field and row delimiters.
-      self.delimiters = try Settings.Delimiters.infer(from: configuration.delimiters, decoder: decoder, buffer: buffer)
+      self.delimiters = try Self.Delimiters.infer(from: configuration, decoder: decoder, buffer: buffer)
       // 2. Set the escaping scalar.
       self.escapingScalar = configuration.escapingStrategy.scalar
       // 3. Set the trim characters set.
@@ -73,13 +73,6 @@ extension CSVReader {
         guard self.delimiters.row.allSatisfy({ !$0.contains(escapingScalar) })
         else { throw Error._invalidRowDelimiter(self.delimiters.row, escapingScalar: escapingScalar) }
       }
-
-      // TODO: Do we still need this check?
-      // The field delimiter cannot appear as the prefix of any of the row delimiters and vice-versa.
-      guard
-        self.delimiters.row.allSatisfy({ !delimiters.field.starts(with: $0) }),
-        self.delimiters.row.allSatisfy({ !$0.starts(with: delimiters.field) })
-      else { throw Error._invalidDelimiters() }
 
       // 6. If there are trim characters, ensure they are not delimiters or the escaping scalar.
       guard self.isTrimNeeded else { return }
