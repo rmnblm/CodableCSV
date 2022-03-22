@@ -2,12 +2,37 @@
 import XCTest
 
 final class DialectDetectorTests: XCTestCase {
-  func bufferAndDecoder(from string: String) -> (CSVReader.ScalarBuffer, CSVReader.ScalarDecoder) {
-    let scalars = Array(string.unicodeScalars)
-    let iter = scalars.makeIterator()
-    let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
-    let decoder = CSVReader.makeDecoder(from: iter)
-    return (buffer, decoder)
+  private enum _TestData {
+    /// A CSV row representing a header row (4 fields).
+    static let headers   =  ["seq", "Name", "Country", "Number Pair"]
+    /// Small amount of regular CSV rows (4 fields per row).
+    static let content  =  [["1", "Marcos", "Spain", "99"],
+                            ["2", "Kina", "Papua New Guinea", "88"],
+                            ["3", "Alex", "Germany", "77"],
+                            ["4", "Marine-Anaïs", "France", "66"]]
+
+    /// Some longer CSV rows
+    static let longContent = [
+      ["ff60766c-08e7-4db4-bfd3-dcc60c15251f", "foofoofoo", "barbarbar", "bazbazbaz"],
+      ["f9165d00-03fc-4d8d-838c-1fba1d26d92d", "foofoofoo", "barbarbar", "bazbazbaz"],
+    ]
+
+    /// Encodes the test data into a Swift `String`.
+    /// - parameter sample:
+    /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
+    /// - returns: Swift String representing the CSV file.
+    static func toCSV(_ sample: [[String]], delimiters: (field: Delimiter, row: Delimiter)) -> String {
+      let (f, r) = (delimiters.field.description, delimiters.row.description)
+      return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
+    }
+
+    static func bufferAndDecoder(from string: String) -> (CSVReader.ScalarBuffer, CSVReader.ScalarDecoder) {
+      let scalars = Array(string.unicodeScalars)
+      let iter = scalars.makeIterator()
+      let buffer = CSVReader.ScalarBuffer(reservingCapacity: 110)
+      let decoder = CSVReader.makeDecoder(from: iter)
+      return (buffer, decoder)
+    }
   }
 }
 
@@ -86,8 +111,8 @@ extension DialectDetectorTests {
   // See: https://github.com/alan-turing-institute/CleverCSV/blob/master/tests/test_unit/test_detect_pattern.py#L160-L195
   func test_calculatePatternScore() throws {
     let dialectScores: [(DelimiterInferrer.Dialect, Double)] = [
-      (try .init(field: ",", row: "\n"), 3.5 / 2),
-//      (try .init(field: ";", row: "\n"), 10 / 3),
+      (try! .init(field: ",", row: "\n"), average(of: 1.5, 2)),
+//      (try! .init(field: ";", row: "\n"), 10 / 3),
     ]
     let csv = #"""
       7,5; Mon, Jan 12;6,40
@@ -109,19 +134,11 @@ extension DialectDetectorTests {
     // 5 * (2 / 3) / 1 = 4
     //
 
-
-//    var score = 0.0
-//    for (rowPattern, count) in rowPatternCounts {
-//      let fieldCount = Double(rowPattern.split(separator: .fieldDelimiter).count)
-//      score += Double(count) * max(Self.eps, fieldCount - 1.0) / fieldCount
-//    }
-//    score /= Double(rowPatternCounts.count)
-
+//    return Double(patternCount) * max(Self.eps, fieldCount - 1.0) / fieldCount
 
     let inferrer = try DelimiterInferrer(possibleFieldDelimiters: [",", ";"], possibleRowDelimiters: [["\n"]])
 
     for (dialect, expectedScore) in dialectScores {
-//      let (buffer, decoder) = bufferAndDecoder(from: csv)
       let abstraction = inferrer.makeAbstraction(from: Array(csv.unicodeScalars), using: dialect)
 
       let score = inferrer.calculatePatternScore(abstraction: abstraction)
@@ -130,25 +147,20 @@ extension DialectDetectorTests {
   }
 
   func test_calculatePatternScore_alt() throws {
-    let fieldDelimiters: [Delimiter] = ["-", "--", "---"]
-    let rowDelimiters: [Delimiter] = ["\n"]
+    let scores = [
+      3 // average(of: 4 * 3 / 4)
+    ]
+    let fieldDelimiters: [Delimiter] = ["*", "*~"]
 
-    var configuration = CSVReader.Configuration()
-    configuration.delimiters = (field: .infer(options: ["-","--", "---"]), row: .infer)
-
-    let veryLongContent = Array(repeating: _TestData.longContent, count: 1).flatMap { $0 }
+    let inferrer = try DelimiterInferrer(possibleFieldDelimiters: fieldDelimiters, possibleRowDelimiters: [["\n"]])
 
     for fieldDelimiter in fieldDelimiters {
-      for rowDelimiter in rowDelimiters {
-        let testString = _TestData.toCSV(veryLongContent, delimiters: (fieldDelimiter, rowDelimiter))
+      let mockData = Array(_TestData.toCSV(_TestData.content, delimiters: ("*~*", "\n")).unicodeScalars)
 
-        let (buffer, decoder) = Self._TestData.bufferAndDecoder(from: testString)
-
-        let inferrer = try DelimiterInferrer(configuration: configuration, possibleFieldDelimiters: ["-","--", "---"], possibleRowDelimiters: conf)
-        XCTAssertEqual(delimiters, try! CSVReader.Settings.Delimiters(field: fieldDelimiter, row: rowDelimiter))
-        //      let result = try CSVReader.decode(input: testString, configuration: configuration)
-        //      XCTAssertEqual(result.rows, veryLongContent)
-      }
+      let abstraction = inferrer.makeAbstraction(from: mockData, using: try! .init(field: fieldDelimiter, row: "\n"))
+      let patternScore = inferrer.calculatePatternScore(abstraction: abstraction!)
+      print(patternScore)
+//      XCTAssertEqual(patternScore, 3.0)
     }
   }
 
@@ -168,8 +180,8 @@ extension DialectDetectorTests {
       """
 
     let dialects: [(DelimiterInferrer.Dialect, Double)] = [
-      (try .init(field: "?", row: "\n"), 1.0),
-      (try .init(field: "/", row: "\n"), 0.5),
+      (try! .init(field: "?", row: "\n"), 1.0),
+      (try! .init(field: "/", row: "\n"), 0.5),
     ]
 
     let inferrer = try DelimiterInferrer(possibleFieldDelimiters: [",", ";"], possibleRowDelimiters: [["\n"]])

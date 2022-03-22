@@ -86,3 +86,19 @@ extension Sequence where Element: Hashable {
 		}
 	}
 }
+
+func average(of values: [Double]) -> Double {
+  values.reduce(0.0, +) / Double(values.count)
+}
+
+func average(of values: Double...) -> Double {
+  average(of: values)
+}
+
+func combinations<X, Y>(_ xs: X, _ ys: Y) -> [(X.Element, Y.Element)] where X: Sequence, Y: Sequence {
+  xs.flatMap { x in
+    ys.map { y in
+      (x, y)
+    }
+  }
+}

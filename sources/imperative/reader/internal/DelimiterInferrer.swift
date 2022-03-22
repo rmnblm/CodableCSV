@@ -31,7 +31,11 @@ struct DelimiterInferrer {
   let configuration: CSVReader.Configuration
   let dialects: [Dialect]
 
-  init(configuration: CSVReader.Configuration) throws {
+  init(
+    configuration: CSVReader.Configuration = .init(),
+    possibleFieldDelimiters: [Delimiter],
+    possibleRowDelimiters: [Set<Delimiter>]
+  ) throws {
     self.configuration = configuration
     self.dialects = try Self.produceDialectCandidates(possibleFieldDelimiters, possibleRowDelimiters)
   }
@@ -49,11 +53,8 @@ struct DelimiterInferrer {
 
     // 1. Generate all possible combinations of indices.
     // Example: (0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)
-    let indexPairs = possibleFieldDelimiters.indices.flatMap { fieldIndex in
-      possibleRowDelimiters.indices.map { rowIndex in
-        (fieldIndex: fieldIndex, rowIndex: rowIndex)
-      }
-    }
+    let indexPairs = combinations(possibleFieldDelimiters.indices, possibleRowDelimiters.indices)
+      .map { (fieldIndex: $0, rowIndex: $1) }
     // 2. Sort index pairs by their sum, i.e. from most likely pairs to least likely pairs.
     // Example: (0, 0), (0, 1), (1, 0), (0, 2), (1, 1), (1, 2)
     let sortedIndexPairs = indexPairs.sorted { lhs, rhs in
@@ -144,13 +145,12 @@ struct DelimiterInferrer {
       .split(separator: .rowDelimiter)
       .occurenceCounts()
 
-    var score = 0.0
-    for (rowPattern, count) in rowPatternCounts {
+    let rowPatternScores: [Double] = rowPatternCounts.map { rowPattern, patternCount in
       let fieldCount = Double(rowPattern.split(separator: .fieldDelimiter).count)
-      score += Double(count) * max(Self.eps, fieldCount - 1.0) / fieldCount
+      return Double(patternCount) * max(Self.eps, fieldCount - 1.0) / fieldCount
     }
-    score /= Double(rowPatternCounts.count)
 
+    let score = average(of: rowPatternScores)
     return score
   }
 
@@ -188,11 +188,8 @@ extension DelimiterInferrer {
     var configuration = self.configuration
     configuration.delimiters = (field: .init(inferenceConfiguration: .use(dialect.field)), row: .init(inferenceConfiguration: .use(dialect.row)))
 
-    guard let reader = try? CSVReader(input: String(String.UnicodeScalarView(scalars)), configuration: configuration)
+    guard let reader = try? CSVReader(scalars: scalars, configuration: configuration)
     else { return nil }
-
-//    guard let reader = try? CSVReader(configuration: configuration, buffer: buffer, decoder: decoder)
-//    else { return nil }
 
     var abstraction: [[Abstraction]] = []
     do {
@@ -345,4 +342,12 @@ fileprivate extension CSVReader.Error {
              reason: "The delimiter options were empty.",
              help: "")
     }
+}
+
+fileprivate extension CSVReader {
+  convenience init(scalars: [Unicode.Scalar], configuration: Configuration) throws {
+    let buffer = ScalarBuffer(reservingCapacity: 8)
+    let decoder = CSVReader.makeDecoder(from: scalars.makeIterator())
+    try self.init(configuration: configuration, buffer: buffer, decoder: decoder)
+  }
 }

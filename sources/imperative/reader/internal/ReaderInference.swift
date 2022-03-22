@@ -156,20 +156,20 @@ extension CSVReader.Settings.Delimiters {
       return try Self(field: fieldDelimiter, row: rowDelimiter)
 
     case let (.infer(fieldDelimiterOptions), .use(rowDelimiter)):
+      try validate(options: fieldDelimiterOptions)
       possibleFieldDelimiters = fieldDelimiterOptions
       possibleRowDelimiters = [rowDelimiter]
 
     case let (.use(fieldDelimiter), .infer(rowDelimiterOptions)):
+      try validate(options: rowDelimiterOptions)
       possibleFieldDelimiters = [fieldDelimiter]
       possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
 
     case let (.infer(fieldDelimiterOptions), .infer(rowDelimiterOptions)):
+      try validate(options: fieldDelimiterOptions, rowDelimiterOptions)
       possibleFieldDelimiters = fieldDelimiterOptions
       possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
     }
-
-    guard !possibleFieldDelimiters.isEmpty, !possibleRowDelimiters.isEmpty
-    else { throw CSVReader.Error._emptyInferenceOptions() }
 
     let sampleLength = 500
     var scalars: [UnicodeScalar] = []
@@ -184,14 +184,29 @@ extension CSVReader.Settings.Delimiters {
       possibleFieldDelimiters: possibleFieldDelimiters,
       possibleRowDelimiters: possibleRowDelimiters
     )
-    guard let detectedDialect = detector.detectDialect(from: scalars) else {
-      throw CSVReader.Error._inferenceFailed()
-    }
+    guard let detectedDialect = detector.detectDialect(from: scalars)
+    else { throw CSVReader.Error._inferenceFailed() }
 
     buffer.preppend(scalars: scalars)
 
     return detectedDialect
   }
+}
+
+private func validate(options: [Delimiter]...) throws {
+  guard options.allSatisfy({ !$0.isEmpty })
+  else { throw CSVReader.Error._emptyInferenceOptions() }
+
+  let options = options.flatMap { $0 }
+  let invalidPairs: [(Delimiter, Delimiter)] = combinations(options, options).compactMap {
+    if $0 == $1 || $1.description.components(separatedBy: $0.description).count <= 2 {
+      return nil
+    }
+    return ($0, $1)
+  }
+
+  guard invalidPairs.isEmpty
+  else { throw CSVReader.Error._invalidInferenceOptions(invalidPairs) }
 }
 
 fileprivate extension CSVReader.Error {
@@ -209,16 +224,24 @@ fileprivate extension CSVReader.Error {
              reason: "Row delimiter inference is not yet supported by this library",
              help: "Specify a concrete delimiter or get in contact with the maintainer")
   }
-  /// Row delimiter inference is not yet implemented.
+  /// TODO
   static func _inferenceFailed() -> CSVError<CSVReader> {
     CSVError(.inferenceFailure,
              reason: "",
              help: "")
   }
-  /// TODO
+  /// Error raised when the list of inference options is empty.
   static func _emptyInferenceOptions() -> CSVError<CSVReader> {
     CSVError(.invalidConfiguration,
-             reason: "Inference options can't be empty.",
-             help: "")
+             reason: "The inference options cannot be empty.",
+             help: "Specify at least one inference option.")
+  }
+  /// Error raised when the list of inference options is invalid.
+  /// - parameter delimiter: The indicated field and row delimiters.
+  static func _invalidInferenceOptions(_ pairs: [(Delimiter, Delimiter)]) -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "Some of the specified inference options were mutually incompatible.",
+             help: "Remove all but one of the incompatible options.",
+             userInfo: ["Incompatible options": pairs])
   }
 }

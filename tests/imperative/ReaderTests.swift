@@ -406,7 +406,7 @@ extension ReaderTests {
         $0.delimiters = (field: " ", row: "\n")
         $0.trimStrategy = .whitespaces
       },
-      // row delimiter can not appear in trim characer set
+      // row delimiter can not appear in trim character set
       {
         $0.delimiters = (field: ",", row: "\n")
         $0.trimStrategy = .whitespacesAndNewlines
@@ -417,17 +417,19 @@ extension ReaderTests {
         $0.trimStrategy = .punctuationCharacters
       },
       // field & row delimiters, including inference options, must be mutually exclusive
-      { $0.delimiters = (field: .infer, row: ",") },
       { $0.delimiters = (field: .infer(options: [",", "--"]), row: "--") },
-      { $0.delimiters = (field: "\n", row: .infer) },
       { $0.delimiters = (field: "--", row: .infer(options: ["\n", "--"])) },
-      { $0.delimiters = (field: .infer(options: ["\n"]), row: .infer) },
-      { $0.delimiters = (field: .infer, row: .infer(options: [","])) },
-      { $0.delimiters = (field: .infer(options: ["-", ","]), row: .infer(options: ["-", "\n"])) },
+      { $0.delimiters = (field: .infer(options: [",", "-"]), row: .infer(options: ["\n", "-"])) },
+      // an inference option must not appear inside any of the other inference options more than once
+      { $0.delimiters = (field: .infer(options: ["-", "--"]), row: "\n") },
+      { $0.delimiters = (field: ",", row: .infer(options: ["*", "**", "**~**"])) },
+      { $0.delimiters = (field: .infer(options: [",", "-"]), row: .infer(options: ["\n", "*--"])) },
     ]
 
     for (index, configuration) in invalidConfigurations.enumerated() {
-      XCTAssertThrowsError(try CSVReader(input: "", setter: configuration), "\(index)")
+      XCTAssertThrowsError(try CSVReader(input: "", setter: configuration), "\(index)") {
+        print($0)
+      }
     }
   }
 }
