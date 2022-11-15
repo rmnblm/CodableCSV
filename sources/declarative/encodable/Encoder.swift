@@ -28,9 +28,7 @@ import Foundation
     get { self._configuration[keyPath: member] }
     set { self._configuration[keyPath: member] = newValue }
   }
-}
 
-extension CSVEncoder {
   /// Returns a CSV-encoded representation of the value you supply.
   /// - parameter value: The value to encode as CSV.
   /// - parameter type: The Swift type for a data blob.
@@ -65,9 +63,7 @@ extension CSVEncoder {
       try $0.completeEncoding()
     }
   }
-}
 
-extension CSVEncoder {
   /// Returns an instance to encode row-by-row the feeded values.
   /// - parameter type: The Swift type for a data blob.
   /// - returns: Instance used for _on demand_ encoding.

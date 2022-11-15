@@ -28,9 +28,7 @@ import Foundation
     get { self._configuration[keyPath: member] }
     set { self._configuration[keyPath: member] = newValue }
   }
-}
 
-extension CSVDecoder {
   /// Returns a value of the type you specify, decoded from a CSV file (given as a `Data` blob).
   /// - parameter type: The type of the value to decode from the supplied file.
   /// - parameter data: The data blob representing a CSV file.
@@ -70,9 +68,7 @@ extension CSVDecoder {
       try T(from: ShadowDecoder(source: .passUnretained($0), codingPath: []))
     }
   }
-}
 
-extension CSVDecoder {
   /// Returns a sequence for decoding row-by-row from a CSV file (given as a `Data` blob).
   /// - parameter data: The data blob representing a CSV file.
   /// - throws: `CSVError<CSVReader>` exclusively.
