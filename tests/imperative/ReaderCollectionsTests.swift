@@ -27,7 +27,7 @@ extension ReaderCollectionsTests {
     /// - parameter sample:
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -42,7 +42,7 @@ extension ReaderCollectionsTests {
   /// Tests the `Record` structure regular usage (i.e. subscripts, collection syntax, lookups, etc.).
   func testRecords() throws {
     // A. The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (field: ",", row: "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (field: ",", row: "\n")
     let headerStrategy: Strategy.Header = .firstLine
     // B. The data used for testing.
     let (headers, content) = (_TestData.headers, _TestData.content)
@@ -74,7 +74,7 @@ extension ReaderCollectionsTests {
   /// Tests the `FileView` structure regular usage.
   func testFileView() throws {
     // A. The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (field: ",", row: "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (field: ",", row: "\n")
     let headerStrategy: Strategy.Header = .firstLine
     // B. The data used for testing.
     let (headers, content) = (_TestData.headers, _TestData.content)

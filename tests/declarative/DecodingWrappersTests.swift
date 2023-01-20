@@ -36,7 +36,7 @@ extension DecodingWrappersTests {
     /// - parameter sample:
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -64,7 +64,7 @@ extension DecodingWrappersTests {
   func testInputData() throws {
     // The configuration values to be tested.
     let encoding: String.Encoding = .utf8
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     // The data used for testing.
     let (headers, content) = (_TestData.headers, _TestData.content)
     let input = _TestData.toCSV([headers] + content, delimiters: delimiters)
@@ -81,7 +81,7 @@ extension DecodingWrappersTests {
   /// Test a simple regular usage where the test data is synthesized.
   func testRegularUsage() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
@@ -105,7 +105,7 @@ extension DecodingWrappersTests {
   /// Test unkeyed container and different usage of `superDecoder` and `decoder`.
   func testDecoderReuse() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
@@ -159,7 +159,7 @@ extension DecodingWrappersTests {
   /// Tests an unnecessary amount of single value containers wrapping.
   func testMatroska() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.

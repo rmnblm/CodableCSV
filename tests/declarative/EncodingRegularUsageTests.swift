@@ -80,7 +80,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     // The data used for testing.
     let value: [[String]] = []
@@ -103,7 +103,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     // The data used for testing.
     let value = [[String()]]
@@ -127,7 +127,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     // The data used for testing.
     let school = _TestData.School<_TestData.KeyedStudent>(students: [])
@@ -150,7 +150,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = ["name", "age", "country", "hasPet"]
     // The data used for testing.
@@ -185,7 +185,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers: [String] = []
     // The data used for testing.
@@ -217,7 +217,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = ["name", "age", "country", "hasPet"]
     // The data used for testing.
@@ -252,7 +252,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = [[], ["name", "age", "country", "hasPet"]]
     // The data used for testing.
@@ -295,7 +295,7 @@ extension EncodingRegularUsageTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = [[], ["name", "age", "country", "hasPet"]]
     // The data used for testing.

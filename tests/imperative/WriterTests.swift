@@ -22,7 +22,7 @@ extension WriterTests {
     /// - parameter sample: The data to be encoded as a CSV.
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVWriter.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -84,8 +84,8 @@ extension WriterTests {
   /// All delimiters (both field and row delimiters) will be used.
   func testRegularUsage() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [Delimiter] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [Delimiter] = [",", ";", "\t", "|", "||", "|-|"]
     let escapingStrategy: [Strategy.Escaping] = [.none, .doubleQuote]
     let encodings: [String.Encoding] = [.utf8, .utf16LittleEndian, .utf16BigEndian, .utf16LittleEndian, .utf32BigEndian]
     // B. The data used for testing.
@@ -109,7 +109,7 @@ extension WriterTests {
     // 1. Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVWriter.Configuration.Delimiters = (f, r)
         // 2. Generate the data for the given configuration values.
         let sample = _TestData.toCSV(input, delimiters: pair)
 
@@ -199,6 +199,29 @@ extension WriterTests {
       XCTFail("The previous line shall throw an error")
     } catch {
       try writer.endEncoding()
+    }
+  }
+
+  /// Tests the validation of the writer's configuration.
+  func testConfiguration() {
+    let validConfigurations: [(inout CSVWriter.Configuration) -> Void] = [
+      // normal usage
+      { $0.delimiters = (field: ",", row: "\n") },
+    ]
+
+    for (index, configuration) in validConfigurations.enumerated() {
+      XCTAssertNoThrow(try CSVWriter(setter: configuration), "\(index)")
+    }
+
+    let invalidConfigurations: [(inout CSVWriter.Configuration) -> Void] = [
+      // field & row delimiter can not be identical
+      { $0.delimiters = (field: "-", row: "-") },
+      // the row delimiter can not start with the field delimiter & vice-versa
+      { $0.delimiters = (field: "**", row: "**~**") },
+    ]
+
+    for (index, configuration) in invalidConfigurations.enumerated() {
+      XCTAssertThrowsError(try CSVWriter(setter: configuration), "\(index)")
     }
   }
 }

@@ -62,7 +62,7 @@ extension DecodingSinglesTests {
   /// The custom decoding process will request an unkeyed container.
   func testSingleValueFileWithUnkeyedContainer() throws {
     // The configuration values to be tested.
-    let rowDelimiter: Delimiter.Row = "\n"
+    let rowDelimiter: CSVReader.Configuration.RowDelimiter = "\n"
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
     struct Custom: Decodable {
@@ -91,7 +91,7 @@ extension DecodingSinglesTests {
   /// The custom decoding process will request an keyed container.
   func testSingleValueFileWithKeyedContainer() throws {
     // The configuration values to be tested.
-    let rowDelimiter: Delimiter.Row = "\n"
+    let rowDelimiter: CSVReader.Configuration.RowDelimiter = "\n"
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
     struct Custom: Decodable {
@@ -124,7 +124,7 @@ extension DecodingSinglesTests {
   /// The custom decoding process will request a single value container.
   func testSingleValueFileWithValueContainer() throws {
     // The configuration values to be tested.
-    let rowDelimiter: Delimiter.Row = "\n"
+    let rowDelimiter: CSVReader.Configuration.RowDelimiter = "\n"
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
     struct Custom: Decodable {
@@ -152,7 +152,7 @@ extension DecodingSinglesTests {
   /// The custom decoding process will request a unkeyed container.
   func testSingleRowFile() throws {
     // The configuration values to be tested.
-    let rowDelimiter: Delimiter.Row = "\n"
+    let rowDelimiter: CSVReader.Configuration.RowDelimiter = "\n"
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
     struct Custom: Decodable {
@@ -184,7 +184,7 @@ extension DecodingSinglesTests {
   /// The custom decoding process will request unkeyed containers and manual decoding.
   func testSingleValueRowsWithkeyedContainer() throws {
     // The configuration values to be tested.
-    let rowDelimiter: Delimiter.Row = "\n"
+    let rowDelimiter: CSVReader.Configuration.RowDelimiter = "\n"
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     /// The data used for testing.
     struct Custom: Decodable {

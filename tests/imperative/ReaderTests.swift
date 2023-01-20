@@ -41,7 +41,7 @@ extension ReaderTests {
     /// - parameter sample: The data to be encoded as a CSV.
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -120,8 +120,8 @@ extension ReaderTests {
   /// Tests a small generic CSV (with and without headers).
   func testRegularUsage() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [CSVReader.Configuration.RowDelimiter] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "\t", "|", "||", "|-|"]
     let headerStrategy: [Strategy.Header] = [.none, .firstLine]
     let trimStrategy = [CharacterSet(), .whitespaces]
     let escapingStrategy: [Strategy.Escaping] = [.none, .doubleQuote]
@@ -153,7 +153,7 @@ extension ReaderTests {
     // Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVReader.Configuration.Delimiters = (f, r)
 
         for h in headerStrategy {
           let input: [[String]]
@@ -198,8 +198,8 @@ extension ReaderTests {
   /// Some edge cases are, for example, the last row's field is empty or a row delimiter within quotes.
   func testEdgeCases() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [CSVReader.Configuration.RowDelimiter] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "\t", "|", "||", "|-|"]
     let headerStrategy: [Strategy.Header] = [.none, .firstLine]
     let trimStrategy = [CharacterSet(), /*.whitespaces*/] // The whitespaces remove the row or field delimiters.
     let presamples: [Bool] = [true, false]
@@ -228,7 +228,7 @@ extension ReaderTests {
     // 1. Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVReader.Configuration.Delimiters = (f, r)
 
         for h in headerStrategy {
           let input: [[String]]
@@ -269,8 +269,8 @@ extension ReaderTests {
   /// - note: This test will randomly generate quoted fields from an unquoted set of data.
   func testQuotedFields() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n", "**~**"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t", "|", "||", "|-|"]
+    let rowDelimiters: [CSVReader.Configuration.RowDelimiter] = ["\n", "\r", "\r\n", "**~**"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "\t", "|", "||", "|-|"]
     let trimStrategy = [CharacterSet(), .whitespaces]
     let presamples: [Bool] = [true, false]
     // B. The data used for testing.
@@ -300,7 +300,7 @@ extension ReaderTests {
     // 1. Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVReader.Configuration.Delimiters = (f, r)
         // 2. Generate the data for the given configuration values.
         let string = _TestData.toCSV(input, delimiters: pair)
         let data = string.data(using: .utf8)!
@@ -333,8 +333,8 @@ extension ReaderTests {
   /// - note: This test randomly generates invalid data every time is run.
   func testInvalidFieldCount() throws {
     // A. The configuration values to be tested.
-    let rowDelimiters: [Delimiter.Row] = ["\n", "\r", "\r\n"]
-    let fieldDelimiters: [Delimiter.Field] = [",", ";", "\t"]
+    let rowDelimiters: [CSVReader.Configuration.RowDelimiter] = ["\n", "\r", "\r\n"]
+    let fieldDelimiters: [CSVReader.Configuration.FieldDelimiter] = [",", ";", "\t"]
     let presamples: [Bool] = [true, false]
     // B. The data used for testing.
     let (headers, content) = (_TestData.headers, _TestData.content)
@@ -342,7 +342,7 @@ extension ReaderTests {
     // 1. Iterate through all configuration values.
     for r in rowDelimiters {
       for f in fieldDelimiters {
-        let pair: Delimiter.Pair = (f, r)
+        let pair: CSVReader.Configuration.Delimiters = (f, r)
         // 2. Generate the data for the given configuration values.
         let string = _TestData.toCSV(input, delimiters: pair)
         let data = string.data(using: .utf8)!
@@ -361,6 +361,74 @@ extension ReaderTests {
         }
 
         try FileManager.default.removeItem(at: url)
+      }
+    }
+  }
+
+  /// Tests the validation of the reader's configuration.
+  func testConfiguration() {
+    let validConfigurations: [(inout CSVReader.Configuration) -> Void] = [
+      // normal usage
+      { $0.delimiters = (field: ",", row: "\n") },
+      // multiple row delimiters
+      { $0.delimiters = (field: ",", row: .init("\n", "\r")!) },
+      // `standard` row delimiter
+      { $0.delimiters = (field: ",", row: .standard) },
+      // inference using nil literal API
+      { $0.delimiters = (field: nil, row: nil) },
+      // inference using new API
+      { $0.delimiters = (field: .infer, row: .infer) },
+      { $0.delimiters = (field: .infer(options: [",", ";"]), row: .infer(options: ["\n", "\r", "\r\n"])) },
+      { $0.delimiters = (field: .infer(options: ["foo", "bar"]), row: .infer(options: ["baz"])) },
+    ]
+
+    for (index, configuration) in validConfigurations.enumerated() {
+      XCTAssertNoThrow(try CSVReader(input: "", setter: configuration), "\(index)")
+    }
+
+    let invalidConfigurations: [(inout CSVReader.Configuration) -> Void] = [
+      // field & row delimiter can not be identical
+      { $0.delimiters = (field: "-", row: "-") },
+      // the row delimiter can not have a prefix identical to the field delimiter & vice-versa
+      { $0.delimiters = (field: "**", row: "**~**") },
+      // escaping scalar can not appear in field delimiter
+      {
+        $0.delimiters = (field: "|-|", row: "\n")
+        $0.escapingStrategy = .scalar("|")
+      },
+      // escaping scalar can not appear in row delimiter
+      {
+        $0.delimiters = (field: ",", row: "**~**")
+        $0.escapingStrategy = .scalar("*")
+      },
+      // field delimiter can not appear in trim character set
+      {
+        $0.delimiters = (field: " ", row: "\n")
+        $0.trimStrategy = .whitespaces
+      },
+      // row delimiter can not appear in trim character set
+      {
+        $0.delimiters = (field: ",", row: "\n")
+        $0.trimStrategy = .whitespacesAndNewlines
+      },
+      // escaping scalar can not appear in trim character set
+      {
+        $0.escapingStrategy = .scalar("*")
+        $0.trimStrategy = .punctuationCharacters
+      },
+      // field & row delimiters, including inference options, must be mutually exclusive
+      { $0.delimiters = (field: .infer(options: [",", "--"]), row: "--") },
+      { $0.delimiters = (field: "--", row: .infer(options: ["\n", "--"])) },
+      { $0.delimiters = (field: .infer(options: [",", "-"]), row: .infer(options: ["\n", "-"])) },
+      // an inference option must not appear inside any of the other inference options more than once
+      { $0.delimiters = (field: .infer(options: ["-", "--"]), row: "\n") },
+      { $0.delimiters = (field: ",", row: .infer(options: ["*", "**", "**~**"])) },
+      { $0.delimiters = (field: .infer(options: [",", "-"]), row: .infer(options: ["\n", "*--"])) },
+    ]
+
+    for (index, configuration) in invalidConfigurations.enumerated() {
+      XCTAssertThrowsError(try CSVReader(input: "", setter: configuration), "\(index)") {
+        print($0)
       }
     }
   }

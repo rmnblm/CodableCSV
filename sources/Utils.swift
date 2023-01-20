@@ -62,7 +62,7 @@ extension Optional {
   }
 }
 
-extension Array where Element:Hashable {
+extension Array where Element: Hashable {
   /// Creates a lookup dictionary for the receiving row.
   ///
   /// In case of two array element with the same hash value, the closure is executed and the generated error is thrown.
@@ -74,5 +74,31 @@ extension Array where Element:Hashable {
       guard case .none = lookup.updateValue(index, forKey: hash) else { throw error() }
     }
     return lookup
+  }
+}
+
+extension Sequence where Element: Hashable {
+	/// Creates a dictionary mapping elements of the sequence to the number of times they occur in the sequence.
+	/// - returns: The dictionary of occurence counts.
+	func occurenceCounts() -> [Element: Int] {
+		reduce(into: [:]) { partialResult, element in
+			partialResult[element, default: 0] += 1
+		}
+	}
+}
+
+func average(of values: [Double]) -> Double {
+  values.reduce(0.0, +) / Double(values.count)
+}
+
+func average(of values: Double...) -> Double {
+  average(of: values)
+}
+
+func combinations<X, Y>(_ xs: X, _ ys: Y) -> [(X.Element, Y.Element)] where X: Sequence, Y: Sequence {
+  xs.flatMap { x in
+    ys.map { y in
+      (x, y)
+    }
   }
 }

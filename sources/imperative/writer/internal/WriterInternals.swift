@@ -29,7 +29,7 @@ extension CSVWriter {
   /// Private configuration variables for the CSV writer.
   struct Settings {
     /// The unicode scalar delimiters for fields and rows.
-    let delimiters: (field: [Unicode.Scalar], row: [Unicode.Scalar])
+    let delimiters: Delimiters
     /// The unicode scalar used as encapsulator and escaping character (when printed two times).
     let escapingScalar: Unicode.Scalar?
     /// Boolean indicating whether the received CSV contains a header row or not.
@@ -41,31 +41,32 @@ extension CSVWriter {
     /// - parameter configuration: The public CSV writer configuration variables.
     /// - throws: `CSVError<CSVWriter>` exclusively.
     init(configuration: CSVWriter.Configuration, encoding: String.Encoding) throws {
-      // 1. The field and row delimiters must be defined and they cannot be the same.
-      guard let delimiters = Delimiter.Scalars(field: configuration.delimiters.field.scalars, row: configuration.delimiters.row.scalars) else {
-        throw Error._invalidDelimiters()
-      }
-      self.delimiters = (delimiters.field, delimiters.row.min {
-        guard $0.count == $1.count else { return $0.count < $1.count }
-        for (lhs, rhs) in zip($0, $1) where lhs != rhs { return lhs < rhs }
-        return true
-      }!)
+      // 1. The field and row delimiters must be defined and one cannot appear as the prefix of another.
+      let delimiters = configuration.delimiters
+      guard
+        !delimiters.field.starts(with: delimiters.row),
+        !delimiters.row.starts(with: delimiters.field)
+      else { throw Error._invalidDelimiters() }
+
+      self.delimiters = (field: delimiters.field.scalars, row: delimiters.row.scalars)
       // 2. Copy all other values.
       self.escapingScalar = configuration.escapingStrategy.scalar
       self.headers = configuration.headers
       self.encoding = encoding
     }
+
+    typealias Delimiters = (field: [Unicode.Scalar], row: [Unicode.Scalar])
   }
 }
 
 // MARK: -
 
 fileprivate extension CSVWriter.Error {
-  /// Error raised when the the field or/and row delimiters are invalid.
+  /// Error raised when the field or/and row delimiters are invalid.
   static func _invalidDelimiters() -> CSVError<CSVWriter> {
     CSVError(.invalidConfiguration,
              reason: "The field and/or row delimiters are invalid.",
-             help: "Both delimiters must contain at least contain a unicode scalar/character and they must be different to each other.")
+             help: "Both delimiters must contain at least a unicode scalar/character and they must be different to each other.")
   }
 }
 
