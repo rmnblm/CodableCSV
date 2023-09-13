@@ -26,7 +26,7 @@ extension DecodingRegularUsageTests {
     /// - parameter sample:
     /// - parameter delimiters: Unicode scalars to use to mark fields and rows.
     /// - returns: Swift String representing the CSV file.
-    static func toCSV(_ sample: [[String]], delimiters: Delimiter.Pair) -> String {
+    static func toCSV(_ sample: [[String]], delimiters: CSVReader.Configuration.Delimiters) -> String {
       let (f, r) = (delimiters.field.description, delimiters.row.description)
       return sample.map { $0.joined(separator: f) }.joined(separator: r).appending(r)
     }
@@ -40,7 +40,7 @@ extension DecodingRegularUsageTests {
   func testInputData() throws {
     // The configuration values to be tested.
     let encoding: String.Encoding = .utf8
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     // The data used for testing.
     let (headers, content) = (_TestData.headers, _TestData.content)
     let input = _TestData.toCSV([headers] + content, delimiters: delimiters)
@@ -57,7 +57,7 @@ extension DecodingRegularUsageTests {
   /// Decodes the list of animals into a list of pets (with no further decodable description more than its definition).
   func testSynthesizedInitializer() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
@@ -107,7 +107,7 @@ extension DecodingRegularUsageTests {
   /// Decodes the list of animals using nested unkeyed containers.
   func testUnkeyedContainers() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.
@@ -148,7 +148,7 @@ extension DecodingRegularUsageTests {
   /// Decodes the list of animals using nested keyed containers.
   func testKeyedContainers() throws {
     // The configuration values to be tested.
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVReader.Configuration.Delimiters = (",", "\n")
     let encoding: String.Encoding = .utf8
     let strategies: [Strategy.DecodingBuffer] = [.keepAll, .sequential]
     // The data used for testing.

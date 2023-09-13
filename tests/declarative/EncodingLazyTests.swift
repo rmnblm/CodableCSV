@@ -43,7 +43,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
 
     for s in bufferStrategies {
@@ -64,7 +64,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     // The data used for testing.
     let value = [String()]
@@ -88,7 +88,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = ["name", "age", "country", "hasPet"]
     // The data used for testing.
@@ -123,7 +123,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers: [String] = []
     // The data used for testing.
@@ -155,7 +155,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = ["name", "age", "country", "hasPet"]
     // The data used for testing.
@@ -194,7 +194,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [.keepAll, .assembled, .sequential]
     let headers = [[], ["name", "age", "country", "hasPet"]]
     // The data used for testing.
@@ -240,7 +240,7 @@ extension EncodingLazyTests {
     // The configuration values to be tests.
     let encoding: String.Encoding = .utf8
     let bomStrategy: Strategy.BOM = .never
-    let delimiters: Delimiter.Pair = (",", "\n")
+    let delimiters: CSVWriter.Configuration.Delimiters = (",", "\n")
     let bufferStrategies: [Strategy.EncodingBuffer] = [/*.keepAll, .assembled, */.sequential]
     let headers = [[], ["name", "age", "country", "hasPet"]]
     // The data used for testing.

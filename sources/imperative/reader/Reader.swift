@@ -19,9 +19,9 @@ public final class CSVReader: IteratorProtocol, Sequence {
   /// The unicode scalar decoder providing all input data.
   private let _decoder: ScalarDecoder
   /// Check whether the given unicode scalar is part of the field delimiter sequence.
-  private let _isFieldDelimiter: Delimiter.Scalars.Checker
+  private let _isFieldDelimiter: Settings.Delimiters.Checker
   /// Check whether the given unicode scalar is par of the row delimiter sequence.
-  private let _isRowDelimiter: Delimiter.Scalars.Checker
+  private let _isRowDelimiter: Settings.Delimiters.Checker
   /// The amount of rows (counting the header row) that have been read and the amount of fields that should be in each row.
   private(set) var count: (rows: Int, fields: Int)
   /// The reader status indicating whether there are remaning lines to read, the CSV has been completely parsed, or an error occurred and no further operation shall be performed.

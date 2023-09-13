@@ -1,4 +1,4 @@
-extension Delimiter.Scalars {
+extension CSVReader.Settings.Delimiters {
   /// Closure accepting a scalar and returning a Boolean indicating whether the scalar (and subsquent unicode scalars from the input) form a delimiter.
   /// - parameter scalar: The scalar that may start a delimiter.
   /// - throws: `CSVError<CSVReader>` exclusively.
@@ -9,7 +9,7 @@ extension Delimiter.Scalars {
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - returns: A closure which given the targeted unicode character and the buffer and iterrator, returns a Boolean indicating whether there is a field delimiter.
   func makeFieldMatcher(buffer: CSVReader.ScalarBuffer, decoder: @escaping CSVReader.ScalarDecoder) -> Self.Checker {
-    Self._makeMatcher(delimiter: self.field, buffer: buffer, decoder: decoder)
+    Self._makeMatcher(delimiter: self.field.scalars, buffer: buffer, decoder: decoder)
   }
 
   /// Creates a row delimiter identifir closure.
@@ -18,7 +18,7 @@ extension Delimiter.Scalars {
   /// - returns: A closure which given the targeted unicode character and the buffer and iterrator, returns a Boolean indicating whether there is a row delimiter.
   func makeRowMatcher(buffer: CSVReader.ScalarBuffer, decoder: @escaping CSVReader.ScalarDecoder) -> Self.Checker {
     guard self.row.count > 1 else {
-      return Self._makeMatcher(delimiter: self.row.first!, buffer: buffer, decoder: decoder)
+      return Self._makeMatcher(delimiter: self.row.first!.scalars, buffer: buffer, decoder: decoder)
     }
 
     let delimiters = self.row.sorted { $0.count < $1.count }
@@ -75,7 +75,7 @@ extension Delimiter.Scalars {
   }
 }
 
-private extension Delimiter.Scalars {
+extension CSVReader.Settings.Delimiters {
   /// Creates a delimiter identifier closure.
   /// - parameter delimiter: The value to be checked for.
   /// - parameter buffer: A unicode character buffer containing further characters to parse.
@@ -137,39 +137,111 @@ private extension Delimiter.Scalars {
   }
 }
 
-extension CSVReader {
+extension CSVReader.Settings.Delimiters {
   /// Tries to infer both the field and row delimiter from the raw data.
-  /// - parameter field: The field delimiter specified by the user.
-  /// - parameter row: The row delimiter specified by the user.
+  /// - parameter delimiters: The delimiter configuration specified by the user.
   /// - parameter decoder: The instance providing the input `Unicode.Scalar`s.
   /// - parameter buffer: Small buffer use to store `Unicode.Scalar` values that have been read from the input, but haven't yet been processed.
   /// - throws: `CSVError<CSVReader>` exclusively.
-  /// - todo: Implement the field and row inferences.
-  static func inferDelimiters(field: Delimiter.Field, row: Delimiter.Row, decoder: ScalarDecoder, buffer: ScalarBuffer) throws -> Delimiter.Scalars {
-    switch (field.isKnown, row.isKnown) {
-    case (true, true):
-      guard let delimiters = Delimiter.Scalars(field: field.scalars, row: row.scalars) else {
-        throw Error._invalidDelimiters(field: field, row: row)
-      }
-      return delimiters
-    default: throw Error._unsupportedInference()
+  static func infer(
+    from configuration: CSVReader.Configuration,
+    decoder: @escaping CSVReader.ScalarDecoder,
+    buffer: CSVReader.ScalarBuffer
+  ) throws -> Self {
+    let possibleFieldDelimiters: [Delimiter]
+    let possibleRowDelimiters: [Set<Delimiter>]
+
+    switch (configuration.delimiters.field.inferenceConfiguration, configuration.delimiters.row.inferenceConfiguration) {
+    case let (.use(fieldDelimiter), .use(rowDelimiter)):
+      return try Self(field: fieldDelimiter, row: rowDelimiter)
+
+    case let (.infer(fieldDelimiterOptions), .use(rowDelimiter)):
+      try validate(options: fieldDelimiterOptions)
+      possibleFieldDelimiters = fieldDelimiterOptions
+      possibleRowDelimiters = [rowDelimiter]
+
+    case let (.use(fieldDelimiter), .infer(rowDelimiterOptions)):
+      try validate(options: rowDelimiterOptions)
+      possibleFieldDelimiters = [fieldDelimiter]
+      possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
+
+    case let (.infer(fieldDelimiterOptions), .infer(rowDelimiterOptions)):
+      try validate(options: fieldDelimiterOptions, rowDelimiterOptions)
+      possibleFieldDelimiters = fieldDelimiterOptions
+      possibleRowDelimiters = rowDelimiterOptions.map { Set([$0]) }
     }
+
+    let sampleLength = 500
+    var scalars: [UnicodeScalar] = []
+    scalars.reserveCapacity(sampleLength)
+    while scalars.count < sampleLength {
+      guard let scalar = try buffer.next() ?? decoder() else { break }
+      scalars.append(scalar)
+    }
+
+    let detector = try DelimiterInferrer(
+      configuration: configuration,
+      possibleFieldDelimiters: possibleFieldDelimiters,
+      possibleRowDelimiters: possibleRowDelimiters
+    )
+    guard let detectedDialect = detector.detectDialect(from: scalars)
+    else { throw CSVReader.Error._inferenceFailed() }
+
+    buffer.preppend(scalars: scalars)
+
+    return detectedDialect
   }
+}
+
+private func validate(options: [Delimiter]...) throws {
+  guard options.allSatisfy({ !$0.isEmpty })
+  else { throw CSVReader.Error._emptyInferenceOptions() }
+
+  let options = options.flatMap { $0 }
+  let invalidPairs: [(Delimiter, Delimiter)] = combinations(options, options).compactMap {
+    if $0 == $1 || $1.description.components(separatedBy: $0.description).count <= 2 {
+      return nil
+    }
+    return ($0, $1)
+  }
+
+  guard invalidPairs.isEmpty
+  else { throw CSVReader.Error._invalidInferenceOptions(invalidPairs) }
 }
 
 fileprivate extension CSVReader.Error {
   /// Error raised when the field and row delimiters are the same.
   /// - parameter delimiter: The indicated field and row delimiters.
-  static func _invalidDelimiters(field: Delimiter.Field, row: Delimiter.Row) -> CSVError<CSVReader> {
+  static func _invalidDelimiters(fieldScalars: [Unicode.Scalar], rowScalars: Set<[Unicode.Scalar]>) -> CSVError<CSVReader> {
     CSVError(.invalidConfiguration,
              reason: "The field and row delimiters cannot be the same.",
              help: "Set different delimiters for fields and rows.",
-             userInfo: ["Field delimiter": field.scalars, "Row delimiters": row.scalars])
+             userInfo: ["Field delimiter": fieldScalars, "Row delimiters": rowScalars])
   }
-  /// Delimiter inference is not yet implemented.
+  /// Row delimiter inference is not yet implemented.
   static func _unsupportedInference() -> CSVError<CSVReader> {
     CSVError(.invalidConfiguration,
-             reason: "Delimiter inference is not yet supported by this library",
+             reason: "Row delimiter inference is not yet supported by this library",
              help: "Specify a concrete delimiter or get in contact with the maintainer")
+  }
+  /// TODO
+  static func _inferenceFailed() -> CSVError<CSVReader> {
+    CSVError(.inferenceFailure,
+             reason: "",
+             help: "")
+  }
+  /// Error raised when the list of inference options is empty.
+  static func _emptyInferenceOptions() -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "The inference options cannot be empty.",
+             help: "Specify at least one inference option.")
+  }
+  /// Error raised when the list of inference options is invalid.
+  /// - parameter delimiter: The indicated field and row delimiters.
+  static func _invalidInferenceOptions(_ pairs: [(Delimiter, Delimiter)]) -> CSVError<CSVReader> {
+    CSVError(.invalidConfiguration,
+             reason: "Some of the specified inference options were mutually incompatible.",
+             help: "Remove all but one of the incompatible options.",
+             userInfo: ["Incompatible options": pairs])
   }
 }

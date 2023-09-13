@@ -10,7 +10,7 @@ extension CSVWriter {
     /// The BOM indicates the string encoding used for the CSV representation. If any, they always are the first bytes on a file.
     public var bomStrategy: Strategy.BOM
     /// The field and row delimiters.
-    public var delimiters: Delimiter.Pair
+    public var delimiters: Delimiters
     /// The strategy to allow/disable escaped fields and how.
     public var escapingStrategy: Strategy.Escaping
     /// The row of headers to write at the beginning of the CSV data.
@@ -18,7 +18,7 @@ extension CSVWriter {
     /// If empty, no row will be written.
     public var headers: [String]
 
-    /// Designated initlaizer setting the default values.
+    /// Designated initializer setting the default values.
     public init() {
       self.encoding = nil
       self.bomStrategy = .convention
@@ -26,6 +26,10 @@ extension CSVWriter {
       self.escapingStrategy = .doubleQuote
       self.headers = Array()
     }
+
+    /// The CSV pair of delimiters (field & row delimiters).
+    /// - todo: Ensure field and row are mutually exclusive as part of type.
+    public typealias Delimiters = (field: Delimiter, row: Delimiter)
   }
 }
 
